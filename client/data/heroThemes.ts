@@ -1,0 +1,68 @@
+import { HeroTheme } from '@/types/experience'
+import { agricultureImages } from './images'
+
+export const mockHeroThemes: HeroTheme[] = [
+  {
+    id: 'harvest',
+    title: 'Good food begins at the source.',
+    subtitle: 'From our small-batch farms to your family kitchen. Traceable heirloom grains, Bilona cow ghee, and stone-milled staples.',
+    badge: "INDIA'S HERITAGE KITCHEN MARKETPLACE",
+    image: '/image.png',
+    ctaText: 'Explore Harvest Pantry',
+    ctaHref: '/shop?category=heirloom-grains',
+  },
+  {
+    id: 'monsoon',
+    title: 'Nourishing Millets & Monsoon Warming Spices.',
+    subtitle: 'High-altitude Pahadi Jakhiya, black pepper, and digestive Vedic A2 ghee to boost rainy season immunity.',
+    badge: "INDIA'S HERITAGE KITCHEN MARKETPLACE",
+    image: agricultureImages.field,
+    ctaText: 'Discover Monsoon Essentials',
+    ctaHref: '/seasonal',
+  },
+  {
+    id: 'spices',
+    title: 'Sun-Dried Himalayan Spices & Sil-Batta Grinding.',
+    subtitle: 'Whole spices hand-picked on high Malabar and Kumaon slopes, ground using traditional stone mills.',
+    badge: "INDIA'S HERITAGE KITCHEN MARKETPLACE",
+    image: agricultureImages.spice,
+    ctaText: 'Shop Artisanal Spices',
+    ctaHref: '/shop?category=himalayan-spices',
+  },
+  {
+    id: 'oils',
+    title: 'Vaagai Wood-Pressed Cold Oils.',
+    subtitle: 'Extracted slowly in dense wooden mortars without heat treatment to preserve natural vitamin E and antioxidants.',
+    badge: "INDIA'S HERITAGE KITCHEN MARKETPLACE",
+    image: agricultureImages.oil,
+    ctaText: 'Explore Cold Oils',
+    ctaHref: '/shop?category=cold-pressed-oils',
+  },
+  {
+    id: 'village-kitchen',
+    title: 'Authentic Clay Cookware & Stone-Ground Flours.',
+    subtitle: 'Recreate the quiet warmth of grandmother’s kitchen with earthen churned Bilona ghee and unpolished grains.',
+    badge: "INDIA'S HERITAGE KITCHEN MARKETPLACE",
+    image: agricultureImages.kitchen,
+    ctaText: 'Read Kitchen Wisdom',
+    ctaHref: '/kitchen-wisdom',
+  },
+  {
+    id: 'festivals',
+    title: 'Pure Ingredients for Festive Sweets & Prasad.',
+    subtitle: 'Organic palm jaggery, A2 Sahiwal cow ghee, and Pampore Mogra Kashmir saffron for sacred celebrations.',
+    badge: "INDIA'S HERITAGE KITCHEN MARKETPLACE",
+    image: agricultureImages.market,
+    ctaText: 'Explore Festival Hampers',
+    ctaHref: '/festivals',
+  },
+  {
+    id: 'farmer-portrait',
+    title: 'Direct from India’s Master Artisans & Farmers.',
+    subtitle: 'Meet Govind Ram Kurmi, Savitri Bai Naik, and Lakshmi Narayanan—the hands preserving native Indian food heritage.',
+    badge: "INDIA'S HERITAGE KITCHEN MARKETPLACE",
+    image: agricultureImages.farmer,
+    ctaText: 'Meet Our Producers',
+    ctaHref: '/producers',
+  },
+]

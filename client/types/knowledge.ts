@@ -1,0 +1,5 @@
+export type Producer = { slug: string; name: string; person: string; place: string; state: string; craft: string; image: string; portrait: string; story: string; detail: string; products: string[]; timeline: { year: string; title: string; body: string }[]; stats: { label: string; value: string }[] }
+export type Article = { slug: string; title: string; category: string; excerpt: string; image: string; author: string; readTime: string; published: string; quote: string; body: string[]; related: string[] }
+export type Recipe = { slug: string; title: string; region: string; cuisine: string; image: string; difficulty: string; time: string; servings: string; story: string; ingredients: string[]; steps: string[]; tips: string[] }
+export type Ingredient = { slug: string; name: string; descriptor: string; image: string; origin: string; history: string; regionalImportance: string; uses: string[]; storage: string; tips: string[]; recipes: string[]; products: string[]; faqs: { question: string; answer: string }[] }
+export type State = { slug: string; name: string; region: string; note: string; image: string }

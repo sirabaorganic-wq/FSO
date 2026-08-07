@@ -1,0 +1,10 @@
+export type SellerStatus = 'Draft' | 'Published' | 'Out of Stock' | 'Archived'
+export type OrderStatus = 'New' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled'
+export type SellerProduct = { id: string; name: string; sku: string; category: string; price: number; inventory: number; status: SellerStatus; image: string; sold: number }
+export type SellerOrder = { id: string; customer: string; date: string; items: number; total: number; status: OrderStatus; payment: string; location: string; product: string }
+export type SellerCustomer = { id: string; name: string; email: string; location: string; orders: number; spend: number; wishlist: number; lastOrder: string }
+export type SellerReview = { id: string; customer: string; product: string; rating: number; date: string; body: string; replied: boolean }
+export type SellerDocument = { id: string; label: string; description: string; status: 'Verified' | 'Pending' | 'Missing'; updated: string }
+export type SellerPayout = { id: string; date: string; amount: number; status: 'Paid' | 'Processing'; reference: string }
+export type SellerNotification = { id: string; title: string; body: string; time: string; unread: boolean }
+export type SellerView = 'overview' | 'products' | 'new-product' | 'product-detail' | 'orders' | 'inventory' | 'customers' | 'reviews' | 'profile' | 'documents' | 'payouts' | 'analytics' | 'settings' | 'support'

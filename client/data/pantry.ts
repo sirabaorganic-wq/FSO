@@ -1,0 +1,58 @@
+import { PantryItem } from '@/types/experience'
+
+export const mockPantryItems: PantryItem[] = [
+  {
+    id: 'pnt-1',
+    name: 'Bundelkhand Bilona A2 Desi Ghee',
+    category: 'Ghee & Fats',
+    recommendedQuantity: '500ml / month',
+    benefits: 'Rich in gut-friendly butyric acid and fat-soluble Vitamins A, D, E, K.',
+    essential: true,
+    productId: 'prd-001',
+  },
+  {
+    id: 'pnt-2',
+    name: 'Chettinad Vaagai Wood-Pressed Sesame Oil',
+    category: 'Cold Pressed Oils',
+    recommendedQuantity: '1L / month',
+    benefits: 'Unrefined sesamol antioxidants for high-temperature cooking & idli podi.',
+    essential: true,
+    productId: 'prd-002',
+  },
+  {
+    id: 'pnt-3',
+    name: 'Western Ghats Wild Forest Raw Honey',
+    category: 'Wild Honey & Sweets',
+    recommendedQuantity: '500g / month',
+    benefits: 'Unheated, unfiltered raw pollen for morning warm water & immunity.',
+    essential: true,
+    productId: 'prd-003',
+  },
+  {
+    id: 'pnt-4',
+    name: 'Tellicherry Extra Bold Black Pepper',
+    category: 'Himalayan Spices',
+    recommendedQuantity: '250g / quarter',
+    benefits: 'High piperine concentration to enhance turmeric & nutrient bioavailability.',
+    essential: true,
+    productId: 'prd-006',
+  },
+  {
+    id: 'pnt-5',
+    name: 'Majuli Island Fragrant Joha Rice',
+    category: 'Heirloom Grains',
+    recommendedQuantity: '2kg / month',
+    benefits: 'Indigenous low-GI aromatic pearl rice variety native to Brahmaputra silt.',
+    essential: false,
+    productId: 'prd-004',
+  },
+  {
+    id: 'pnt-6',
+    name: 'Kumaon Wild Jakhiya Seeds',
+    category: 'Himalayan Spices',
+    recommendedQuantity: '100g / quarter',
+    benefits: 'Crisp Pahadi tempering seed for aloo gutke, dal, and vegetable stir fry.',
+    essential: false,
+    productId: 'prd-005',
+  },
+]
