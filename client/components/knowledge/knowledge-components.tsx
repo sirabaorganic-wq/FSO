@@ -2,9 +2,48 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight, Clock3, MapPin, Play, Quote } from 'lucide-react'
 import type { Article, Ingredient, Producer, Recipe } from '@/types/knowledge'
+import { BackButton } from '@/components/ui/back-button'
 
-export function KnowledgeHero({ eyebrow, title, intro, image, imageAlt = '' }: { eyebrow: string; title: string; intro: string; image: string; imageAlt?: string }) {
-  return <section className="border-b border-border bg-surface"><div className="container-shell grid gap-10 py-24 md:grid-cols-[0.9fr_1.1fr] md:items-end md:py-32"><div><p className="eyebrow">{eyebrow}</p><h1 className="display mt-5 max-w-3xl text-6xl text-primary md:text-8xl">{title}</h1><p className="mt-7 max-w-xl text-base leading-7 text-muted-foreground md:text-lg">{intro}</p></div><div className="relative aspect-[4/3] overflow-hidden bg-surface-muted"><Image src={image} alt={imageAlt} fill priority sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" /></div></div></section>
+export function KnowledgeHero({
+  eyebrow,
+  title,
+  intro,
+  image,
+  imageAlt = '',
+  backHref = '/',
+  backLabel = 'Back',
+  hideBackButton = false,
+}: {
+  eyebrow: string
+  title: string
+  intro: string
+  image: string
+  imageAlt?: string
+  backHref?: string
+  backLabel?: string
+  hideBackButton?: boolean
+}) {
+  return (
+    <section className="border-b border-border bg-surface">
+      <div className="container-shell pt-28 pb-16 md:pt-32 md:pb-24">
+        {!hideBackButton && (
+          <div className="mb-6">
+            <BackButton fallbackHref={backHref} label={backLabel} variant="pill" />
+          </div>
+        )}
+        <div className="grid gap-10 md:grid-cols-[0.9fr_1.1fr] md:items-end">
+          <div>
+            <p className="eyebrow">{eyebrow}</p>
+            <h1 className="display mt-5 max-w-3xl text-6xl text-primary md:text-8xl">{title}</h1>
+            <p className="mt-7 max-w-xl text-base leading-7 text-muted-foreground md:text-lg">{intro}</p>
+          </div>
+          <div className="relative aspect-[4/3] overflow-hidden bg-surface-muted">
+            <Image src={image} alt={imageAlt} fill priority sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
+          </div>
+        </div>
+      </div>
+    </section>
+  )
 }
 
 export function ProducerCard({ producer }: { producer: Producer }) {

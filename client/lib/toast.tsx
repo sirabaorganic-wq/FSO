@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useCallback } from 'react'
 import { CheckCircle2, XCircle, AlertTriangle, Info, X } from 'lucide-react'
 
-export type ToastVariant = 'success' | 'error' | 'warning' | 'info'
+export type ToastVariant = 'success' | 'error' | 'warning' | 'info' | 'default'
 
 export interface ToastItem {
   id: string
@@ -16,6 +16,7 @@ export interface ToastItem {
 interface ToastContextType {
   toasts: ToastItem[]
   showToast: (toast: Omit<ToastItem, 'id'>) => void
+  addToast: (toast: { title: string; message?: string; description?: string; variant?: ToastVariant; duration?: number }) => void
   dismissToast: (id: string) => void
   success: (title: string, message?: string) => void
   error: (title: string, message?: string) => void
@@ -48,13 +49,20 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     [dismissToast]
   )
 
+  const addToast = useCallback(
+    ({ title, message, description, variant = 'info', duration = 4000 }: { title: string; message?: string; description?: string; variant?: ToastVariant; duration?: number }) => {
+      showToast({ title, message: message || description, variant, duration })
+    },
+    [showToast]
+  )
+
   const success = useCallback((title: string, message?: string) => showToast({ title, message, variant: 'success' }), [showToast])
   const error = useCallback((title: string, message?: string) => showToast({ title, message, variant: 'error' }), [showToast])
   const warning = useCallback((title: string, message?: string) => showToast({ title, message, variant: 'warning' }), [showToast])
   const info = useCallback((title: string, message?: string) => showToast({ title, message, variant: 'info' }), [showToast])
 
   return (
-    <ToastContext.Provider value={{ toasts, showToast, dismissToast, success, error, warning, info }}>
+    <ToastContext.Provider value={{ toasts, showToast, addToast, dismissToast, success, error, warning, info }}>
       {children}
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </ToastContext.Provider>
@@ -84,6 +92,7 @@ function ToastContainer({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss:
           error: XCircle,
           warning: AlertTriangle,
           info: Info,
+          default: Info,
         }
         const Icon = icons[t.variant]
 
@@ -92,6 +101,7 @@ function ToastContainer({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss:
           error: 'border-rose-500/30 bg-surface text-foreground shadow-lg',
           warning: 'border-amber-500/30 bg-surface text-foreground shadow-lg',
           info: 'border-primary/30 bg-surface text-foreground shadow-lg',
+          default: 'border-primary/30 bg-surface text-foreground shadow-lg',
         }
 
         const iconStyles: Record<ToastVariant, string> = {
@@ -99,6 +109,7 @@ function ToastContainer({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss:
           error: 'text-rose-600 dark:text-rose-400',
           warning: 'text-amber-600 dark:text-amber-400',
           info: 'text-primary dark:text-primary-foreground',
+          default: 'text-primary dark:text-primary-foreground',
         }
 
         return (

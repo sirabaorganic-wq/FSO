@@ -2,12 +2,27 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { Sun, Moon, Laptop, ShieldCheck } from 'lucide-react'
+import { Sun, Moon, Laptop, ShieldCheck, Store } from 'lucide-react'
 import { logoUrl } from '@/data/images'
 import { useTheme } from '@/lib/theme'
+import { useAuth, getDashboardRouteForUser } from '@/lib/auth-context'
 
 export function SiteFooter() {
   const { theme, setTheme } = useTheme()
+  const { isAuthenticated, rawUser } = useAuth()
+
+  const role = (rawUser?.role || '').toLowerCase()
+  const isAdmin = Boolean(
+    rawUser?.isAdmin ||
+    role === 'admin' ||
+    role === 'operations_manager' ||
+    role === 'finance_admin' ||
+    role === 'producer_manager' ||
+    role === 'vendor_onboarder' ||
+    role === 'content_editor' ||
+    role === 'blog_creator'
+  )
+  const isSeller = role === 'vendor' || role === 'seller' || role === 'producer_manager'
 
   return (
     <footer className="bg-primary py-12 text-primary-foreground border-t border-primary-foreground/10" aria-label="Site footer">
@@ -34,6 +49,7 @@ export function SiteFooter() {
               ['Cold Pressed Oils', '/shop?category=cold-pressed-oils'],
               ['Vedic Desi Ghee', '/shop?category=vedic-ghee'],
               ['Artisanal Producers', '/producers'],
+              ['Partner as a Producer', '/seller/register'],
             ]}
           />
 
@@ -50,12 +66,24 @@ export function SiteFooter() {
           <div className="space-y-3">
             <p className="eyebrow text-accent">Portals & Theme</p>
             <nav className="flex flex-col gap-2.5 text-xs text-primary-foreground/75" aria-label="Portals & Settings">
-              <Link href="/admin" className="hover:text-accent font-semibold flex items-center gap-1.5">
-                <ShieldCheck className="size-3.5 text-accent" /> Admin Control Center
+              <Link href="/seller/register" className="hover:text-accent font-semibold flex items-center gap-1.5">
+                <Store className="size-3.5 text-accent" /> Register as a Producer
               </Link>
-              <Link href="/seller" className="hover:text-accent font-semibold">
-                Producer Portal
-              </Link>
+              {isAuthenticated && isAdmin && (
+                <Link href="/admin" className="hover:text-accent font-semibold flex items-center gap-1.5">
+                  <ShieldCheck className="size-3.5 text-accent" /> Admin Control Center
+                </Link>
+              )}
+              {isAuthenticated && isSeller && (
+                <Link href="/seller" className="hover:text-accent font-semibold flex items-center gap-1.5">
+                  <Store className="size-3.5 text-accent" /> Producer Portal
+                </Link>
+              )}
+              {!isAuthenticated && (
+                <Link href="/auth/login" className="hover:text-accent font-semibold">
+                  Account Sign In
+                </Link>
+              )}
             </nav>
 
             <div className="pt-2">
@@ -68,9 +96,8 @@ export function SiteFooter() {
                   onClick={() => setTheme('light')}
                   title="Switch to Light mode"
                   aria-label="Light mode"
-                  className={`p-1.5 rounded-md text-xs font-semibold transition-colors ${
-                    theme === 'light' ? 'bg-primary-foreground text-primary shadow-xs' : 'text-primary-foreground/70 hover:text-primary-foreground'
-                  }`}
+                  className={`p-1.5 rounded-md text-xs font-semibold transition-colors ${theme === 'light' ? 'bg-primary-foreground text-primary shadow-xs' : 'text-primary-foreground/70 hover:text-primary-foreground'
+                    }`}
                 >
                   <Sun className="size-3.5" />
                 </button>
@@ -79,9 +106,8 @@ export function SiteFooter() {
                   onClick={() => setTheme('dark')}
                   title="Switch to Dark mode"
                   aria-label="Dark mode"
-                  className={`p-1.5 rounded-md text-xs font-semibold transition-colors ${
-                    theme === 'dark' ? 'bg-primary-foreground text-primary shadow-xs' : 'text-primary-foreground/70 hover:text-primary-foreground'
-                  }`}
+                  className={`p-1.5 rounded-md text-xs font-semibold transition-colors ${theme === 'dark' ? 'bg-primary-foreground text-primary shadow-xs' : 'text-primary-foreground/70 hover:text-primary-foreground'
+                    }`}
                 >
                   <Moon className="size-3.5" />
                 </button>
@@ -90,9 +116,8 @@ export function SiteFooter() {
                   onClick={() => setTheme('system')}
                   title="Switch to System mode"
                   aria-label="System mode"
-                  className={`p-1.5 rounded-md text-xs font-semibold transition-colors ${
-                    theme === 'system' ? 'bg-primary-foreground text-primary shadow-xs' : 'text-primary-foreground/70 hover:text-primary-foreground'
-                  }`}
+                  className={`p-1.5 rounded-md text-xs font-semibold transition-colors ${theme === 'system' ? 'bg-primary-foreground text-primary shadow-xs' : 'text-primary-foreground/70 hover:text-primary-foreground'
+                    }`}
                 >
                   <Laptop className="size-3.5" />
                 </button>

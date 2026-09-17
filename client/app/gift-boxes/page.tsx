@@ -4,6 +4,7 @@ import { Gift, Star, ShoppingBag } from 'lucide-react'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { mockGiftBoxes } from '@/data/giftBoxes'
+import { BackButton } from '@/components/ui/back-button'
 
 export const metadata = { title: 'Gift Collections & Festival Hampers' }
 
@@ -12,6 +13,9 @@ export default function GiftBoxesPage() {
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <SiteHeader />
       <main id="main-content" className="flex-1 container-shell pt-28 pb-16 space-y-8">
+        <div>
+          <BackButton fallbackHref="/" label="Back to Marketplace" variant="pill" />
+        </div>
         <div className="text-center max-w-2xl mx-auto space-y-2">
           <span className="eyebrow text-accent">Artisanal Gifting</span>
           <h1 className="font-serif text-3xl md:text-5xl font-bold text-foreground">

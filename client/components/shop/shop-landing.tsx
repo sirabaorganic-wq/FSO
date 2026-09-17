@@ -1,23 +1,185 @@
 import Link from 'next/link'
 import { ArrowRight, ShieldCheck, Sprout, Truck } from 'lucide-react'
-import { discoveryCategories, discoveryCollections, discoveryProducts, discoveryProducers, discoveryArticles } from '@/data/discovery'
 import { SectionHeading } from '@/components/ui/section-heading'
+import { BackButton } from '@/components/ui/back-button'
 import { CategoryCard, CollectionCard, ProductCard, ProducerCard, ArticleCard } from '@/components/cards/discovery-cards'
 import { SiteFooter } from '@/components/layout/site-footer'
+import type { DiscoveryProduct, DiscoveryProducer, DiscoveryCategory, DiscoveryCollection, DiscoveryArticle } from '@/types/discovery'
 
-export function ShopLanding() {
-  return <>
-    <main id="main-content" className="pt-20">
-      <section className="bg-primary text-primary-foreground"><div className="container-shell grid min-h-[60vh] items-end gap-10 py-20 md:grid-cols-[1.1fr_0.9fr] md:py-28"><div className="max-w-3xl"><p className="eyebrow mb-6 text-accent">The FSO pantry</p><h1 className="display text-6xl leading-[0.9] text-primary-foreground md:text-8xl">Ingredients with a <em className="text-accent">point of view.</em></h1><p className="mt-7 max-w-xl text-base leading-7 text-primary-foreground/75 md:text-lg">Shop by source, method and story. A considered pantry of everyday ingredients from people who know them best.</p><Link href="#categories" className="mt-8 inline-flex min-h-12 items-center gap-3 border border-accent px-5 text-xs font-bold uppercase tracking-[0.14em] text-accent hover:bg-accent hover:text-accent-foreground">Explore the pantry <ArrowRight className="size-4" aria-hidden="true" /></Link></div><div className="border-l border-primary-foreground/20 pl-6 md:mb-2 md:pl-10"><p className="max-w-sm font-serif text-3xl leading-tight text-primary-foreground/90">Good food begins at the source.</p><p className="mt-5 max-w-sm text-sm leading-6 text-primary-foreground/65">Every ingredient is an invitation to know where it began, who made it, and why it matters.</p></div></div></section>
-      <section id="categories" className="section-shell"><div className="container-shell"><SectionHeading eyebrow="Begin somewhere" title="The everyday, made meaningful." copy="Start with the ingredients that shape your kitchen most often." /><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{discoveryCategories.map((category) => <CategoryCard key={category.slug} category={category} />)}</div></div></section>
-      <section className="section-shell bg-surface-muted"><div className="container-shell"><SectionHeading eyebrow="Curated by FSO" title="A pantry with a rhythm." copy="Collections that bring together the ingredients, makers and methods that belong in the same story." action="See all collections" actionHref="/shop/collection/slow-pantry" /><div className="grid gap-4 md:grid-cols-3">{discoveryCollections.map((collection) => <CollectionCard key={collection.slug} collection={collection} />)}</div></div></section>
-      <section className="section-shell"><div className="container-shell"><SectionHeading eyebrow="Featured ingredients" title="Small choices. Better kitchens." action="Shop all ingredients" actionHref="/shop/category/grains-flours" /><div className="grid gap-x-5 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">{discoveryProducts.slice(0, 4).map((product) => <ProductCard key={product.slug} product={product} />)}</div></div></section>
-      <section className="section-shell bg-primary text-primary-foreground"><div className="container-shell grid gap-10 md:grid-cols-[0.8fr_1.2fr] md:items-start"><div><p className="eyebrow text-accent">Meet the source</p><h2 className="display mt-4 text-6xl text-primary-foreground md:text-7xl">The people behind the pantry.</h2><p className="mt-6 max-w-md text-sm leading-7 text-primary-foreground/70">We believe the maker is part of the ingredient. Meet the families, collectives and craftspeople keeping India&apos;s food traditions in motion.</p><Link href="/shop" className="mt-8 inline-flex min-h-11 items-center gap-3 text-xs font-bold uppercase tracking-[0.14em] text-accent">Meet our producers <ArrowRight className="size-4" aria-hidden="true" /></Link></div><div>{discoveryProducers.map((producer) => <ProducerCard key={producer.slug} producer={producer} />)}</div></div></section>
-      <section className="section-shell"><div className="container-shell"><SectionHeading eyebrow="Kitchen wisdom" title="Make room for knowing." action="Read all stories" actionHref="/search?q=kitchen" /><div className="grid gap-8 md:grid-cols-3">{discoveryArticles.map((article) => <ArticleCard key={article.slug} article={article} />)}</div></div></section>
-      <section className="border-y border-border bg-surface-muted"><div className="container-shell grid gap-6 py-10 md:grid-cols-3"><TrustItem icon={<Sprout aria-hidden="true" />} title="Source first" copy="We tell you where it began." /><TrustItem icon={<ShieldCheck aria-hidden="true" />} title="Made with care" copy="Methods worth preserving." /><TrustItem icon={<Truck aria-hidden="true" />} title="Delivered thoughtfully" copy="From their hands to yours." /></div></section>
-    </main>
-    <SiteFooter />
-  </>
+interface ShopLandingProps {
+  products?: DiscoveryProduct[]
+  producers?: DiscoveryProducer[]
+  categories?: DiscoveryCategory[]
+  collections?: DiscoveryCollection[]
+  articles?: DiscoveryArticle[]
 }
 
-function TrustItem({ icon, title, copy }: { icon: React.ReactNode; title: string; copy: string }) { return <div className="flex items-start gap-4"><div className="text-secondary">{icon}</div><div><h2 className="font-serif text-2xl text-foreground">{title}</h2><p className="mt-1 text-sm text-muted-foreground">{copy}</p></div></div> }
+export function ShopLanding({
+  products = [],
+  producers = [],
+  categories = [],
+  collections = [],
+  articles = [],
+}: ShopLandingProps = {}) {
+  return (
+    <>
+      <main id="main-content" className="pt-20">
+        <section className="bg-primary text-primary-foreground">
+          <div className="container-shell grid min-h-[60vh] items-end gap-10 py-20 md:grid-cols-[1.1fr_0.9fr] md:py-28">
+            <div className="max-w-3xl">
+              <div className="mb-6">
+                <BackButton fallbackHref="/" label="Back to Marketplace" variant="pill" className="border-white/30 text-white hover:bg-white/10" />
+              </div>
+              <p className="eyebrow mb-6 text-accent">The FSO pantry</p>
+              <h1 className="display text-6xl leading-[0.9] text-primary-foreground md:text-8xl">
+                Ingredients with a <em className="text-accent">point of view.</em>
+              </h1>
+              <p className="mt-7 max-w-xl text-base leading-7 text-primary-foreground/75 md:text-lg">
+                Shop by source, method and story. A considered pantry of everyday ingredients from people who know them best.
+              </p>
+              <Link
+                href="#categories"
+                className="mt-8 inline-flex min-h-12 items-center gap-3 border border-accent px-5 text-xs font-bold uppercase tracking-[0.14em] text-accent hover:bg-accent hover:text-accent-foreground transition-colors"
+              >
+                Explore the pantry <ArrowRight className="size-4" aria-hidden="true" />
+              </Link>
+            </div>
+            <div className="border-l border-primary-foreground/20 pl-6 md:mb-2 md:pl-10">
+              <p className="max-w-sm font-serif text-3xl leading-tight text-primary-foreground/90">
+                Good food begins at the source.
+              </p>
+              <p className="mt-5 max-w-sm text-sm leading-6 text-primary-foreground/65">
+                Every ingredient is an invitation to know where it began, who made it, and why it matters.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section id="categories" className="section-shell">
+          <div className="container-shell">
+            <SectionHeading
+              eyebrow="Begin somewhere"
+              title="The everyday, made meaningful."
+              copy="Start with the ingredients that shape your kitchen most often."
+            />
+            {categories.length > 0 ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {categories.map((category) => (
+                  <CategoryCard key={category.slug} category={category} />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground py-8">Categories are currently being indexed.</p>
+            )}
+          </div>
+        </section>
+
+        {collections.length > 0 && (
+          <section className="section-shell bg-surface-muted">
+            <div className="container-shell">
+              <SectionHeading
+                eyebrow="Curated by FSO"
+                title="A pantry with a rhythm."
+                copy="Collections that bring together the ingredients, makers and methods that belong in the same story."
+                action="See all collections"
+                actionHref={`/shop/collection/${collections[0].slug}`}
+              />
+              <div className="grid gap-4 md:grid-cols-3">
+                {collections.map((collection) => (
+                  <CollectionCard key={collection.slug} collection={collection} />
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        <section className="section-shell">
+          <div className="container-shell">
+            <SectionHeading
+              eyebrow="Featured ingredients"
+              title="Small choices. Better kitchens."
+              action="Explore the pantry"
+              actionHref="#categories"
+            />
+            {products.length > 0 ? (
+              <div className="grid gap-x-5 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
+                {products.slice(0, 8).map((product) => (
+                  <ProductCard key={product.slug} product={product} />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground py-8">No ingredients currently listed.</p>
+            )}
+          </div>
+        </section>
+
+        {producers.length > 0 && (
+          <section className="section-shell bg-primary text-primary-foreground">
+            <div className="container-shell grid gap-10 md:grid-cols-[0.8fr_1.2fr] md:items-start">
+              <div>
+                <p className="eyebrow text-accent">Meet the source</p>
+                <h2 className="display mt-4 text-6xl text-primary-foreground md:text-7xl">
+                  The people behind the pantry.
+                </h2>
+                <p className="mt-6 max-w-md text-sm leading-7 text-primary-foreground/70">
+                  We believe the maker is part of the ingredient. Meet the families, collectives and craftspeople keeping
+                  India&apos;s food traditions in motion.
+                </p>
+                <Link
+                  href="/producers"
+                  className="mt-8 inline-flex min-h-11 items-center gap-3 text-xs font-bold uppercase tracking-[0.14em] text-accent hover:underline"
+                >
+                  Meet our producers <ArrowRight className="size-4" aria-hidden="true" />
+                </Link>
+              </div>
+              <div className="space-y-4">
+                {producers.map((producer) => (
+                  <ProducerCard key={producer.slug} producer={producer} />
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {articles.length > 0 && (
+          <section className="section-shell">
+            <div className="container-shell">
+              <SectionHeading
+                eyebrow="Kitchen wisdom"
+                title="Make room for knowing."
+                action="Read all stories"
+                actionHref="/kitchen-wisdom/articles"
+              />
+              <div className="grid gap-8 md:grid-cols-3">
+                {articles.map((article) => (
+                  <ArticleCard key={article.slug} article={article} />
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        <section className="border-y border-border bg-surface-muted">
+          <div className="container-shell grid gap-6 py-10 md:grid-cols-3">
+            <TrustItem icon={<Sprout aria-hidden="true" />} title="Source first" copy="We tell you where it began." />
+            <TrustItem icon={<ShieldCheck aria-hidden="true" />} title="Made with care" copy="Methods worth preserving." />
+            <TrustItem icon={<Truck aria-hidden="true" />} title="Delivered thoughtfully" copy="From their hands to yours." />
+          </div>
+        </section>
+      </main>
+      <SiteFooter />
+    </>
+  )
+}
+
+function TrustItem({ icon, title, copy }: { icon: React.ReactNode; title: string; copy: string }) {
+  return (
+    <div className="flex items-start gap-4">
+      <div className="text-secondary">{icon}</div>
+      <div>
+        <h2 className="font-serif text-2xl text-foreground">{title}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{copy}</p>
+      </div>
+    </div>
+  )
+}

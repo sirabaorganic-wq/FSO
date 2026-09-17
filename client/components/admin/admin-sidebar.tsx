@@ -57,7 +57,7 @@ const navGroups: NavGroup[] = [
   {
     label: 'Marketplace Operations',
     items: [
-      { label: 'Orders & Refunds', href: '/admin/orders', icon: ShoppingCart, badge: 4 },
+      { label: 'Orders & Refunds', href: '/admin/orders', icon: ShoppingCart },
       { label: 'Product Catalog', href: '/admin/products', icon: ShoppingBag },
       { label: 'Categories', href: '/admin/categories', icon: FolderTree },
       { label: 'Collections', href: '/admin/collections', icon: Layers },
@@ -68,7 +68,7 @@ const navGroups: NavGroup[] = [
     label: 'Users & Producers',
     items: [
       { label: 'Producer Directory', href: '/admin/producers', icon: UserCheck },
-      { label: 'Producer Approvals', href: '/admin/producer-approvals', icon: UserCog, badge: 2, badgeColor: 'bg-amber-500 text-white' },
+      { label: 'Producer Approvals', href: '/admin/producer-approvals', icon: UserCog },
       { label: 'Customer Directory', href: '/admin/customers', icon: Users },
       { label: 'Admin & Staff Users', href: '/admin/users', icon: ShieldCheck },
       { label: 'Roles & Matrix', href: '/admin/roles', icon: Settings },

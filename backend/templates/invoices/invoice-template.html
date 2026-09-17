@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Invoice - {{invoiceNumber}}</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      @page {
+        size: A4;
+        margin: 15mm;
+      }
+
+      body {
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        background: white;
+        color: #333;
+        font-size: 13px;
+        line-height: 1.4;
+      }
+
+      .invoice-container {
+        max-width: 210mm;
+        margin: 0 auto;
+        background: white;
+        position: relative;
+      }
+
+      .accent-bar {
+        height: 6px;
+        background: linear-gradient(90deg, #1a4d2e 0%, #7cb342 100%);
+        margin-bottom: 20px;
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #e5e5e5;
+      }
+
+      .logo-section {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+      }
+
+      .logo {
+        width: 70px;
+        height: 70px;
+      }
+
+      .company-info h1 {
+        font-size: 28px;
+        color: #1a4d2e;
+        font-weight: 800;
+        margin-bottom: 3px;
+        letter-spacing: -0.5px;
+      }
+
+      .company-tagline {
+        color: #7cb342;
+        font-size: 9px;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+
+      .company-contact {
+        color: #666;
+        font-size: 11px;
+        line-height: 1.6;
+      }
+
+      .company-website {
+        color: #1a4d2e;
+        font-weight: 600;
+        font-size: 11px;
+        margin-top: 4px;
+      }
+
+      .gst-info {
+        background: #f0f7f0;
+        border: 1px solid #7cb342;
+        padding: 8px 12px;
+        border-radius: 4px;
+        margin-top: 8px;
+        font-size: 10px;
+      }
+
+      .gst-info strong {
+        color: #1a4d2e;
+        font-weight: 700;
+      }
+
+      .invoice-label {
+        text-align: right;
+      }
+
+      .invoice-label h2 {
+        font-size: 12px;
+        color: #888;
+        font-weight: 400;
+        margin-bottom: 3px;
+        letter-spacing: 1px;
+      }
+
+      .invoice-label .inv-number {
+        font-size: 28px;
+        color: #1a4d2e;
+        font-weight: 700;
+      }
+
+      .detail-cards {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 15px;
+        margin-bottom: 20px;
+      }
+
+      .card {
+        background: #f9fafb;
+        padding: 15px;
+        border-radius: 6px;
+        border-left: 3px solid #7cb342;
+      }
+
+      .card h3 {
+        font-size: 10px;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+        font-weight: 700;
+      }
+
+      .card p {
+        font-size: 11px;
+        color: #444;
+        line-height: 1.5;
+        margin: 2px 0;
+      }
+
+      .card .highlight {
+        color: #1a4d2e;
+        font-weight: 700;
+        font-size: 12px;
+      }
+
+      .status-tag {
+        background: linear-gradient(135deg, #1a4d2e 0%, #2d7a4f 100%);
+        color: white;
+        padding: 4px 10px;
+        border-radius: 15px;
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        display: inline-block;
+        margin-top: 6px;
+      }
+
+      .items-section {
+        margin-bottom: 15px;
+      }
+
+      .section-title {
+        font-size: 14px;
+        color: #1a4d2e;
+        font-weight: 700;
+        margin-bottom: 12px;
+        padding-bottom: 6px;
+        border-bottom: 2px solid #7cb342;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+
+      thead th {
+        background: #1a4d2e;
+        color: white;
+        padding: 10px 8px;
+        text-align: left;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      thead th:first-child {
+        border-radius: 5px 0 0 0;
+      }
+
+      thead th:last-child {
+        border-radius: 0 5px 0 0;
+        text-align: right;
+      }
+
+      tbody tr {
+        border-bottom: 1px solid #f0f0f0;
+      }
+
+      tbody tr:last-child {
+        border-bottom: none;
+      }
+
+      tbody td {
+        padding: 12px 8px;
+        color: #444;
+      }
+
+      tbody td:nth-child(2),
+      tbody td:nth-child(3),
+      tbody td:nth-child(4) {
+        text-align: right;
+      }
+
+      .product-name {
+        font-weight: 700;
+        color: #1a4d2e;
+        margin-bottom: 3px;
+        font-size: 13px;
+      }
+
+      .product-desc {
+        color: #999;
+        font-size: 11px;
+        font-style: italic;
+      }
+
+      .totals-section {
+        margin-top: 15px;
+      }
+
+      .totals-box {
+        margin-left: auto;
+        width: 280px;
+        background: #f9fafb;
+        border-radius: 6px;
+        padding: 15px;
+        border-left: 3px solid #7cb342;
+      }
+
+      .total-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        font-size: 12px;
+        color: #555;
+        border-bottom: 1px solid #e5e5e5;
+      }
+
+      .total-row:last-child {
+        border-bottom: none;
+      }
+
+      .total-row.grand {
+        background: linear-gradient(135deg, #1a4d2e 0%, #2d7a4f 100%);
+        color: white;
+        margin: 12px -15px -15px;
+        padding: 15px;
+        border-radius: 0 0 6px 6px;
+        font-size: 16px;
+        font-weight: 700;
+      }
+
+      .footer {
+        margin-top: 25px;
+        padding-top: 15px;
+        text-align: center;
+        border-top: 1px solid #e5e5e5;
+      }
+
+      .footer p {
+        color: #777;
+        font-size: 11px;
+        line-height: 1.6;
+        margin-bottom: 15px;
+      }
+
+      .signature-section {
+        margin-top: 20px;
+        text-align: right;
+      }
+
+      .sig-line {
+        display: inline-block;
+        border-top: 2px solid #1a4d2e;
+        padding-top: 6px;
+        width: 180px;
+        font-size: 10px;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="invoice-container">
+      <div class="accent-bar"></div>
+
+      <div class="header">
+          <img
+            src="data:image/png;base64,{{logoBase64}}"
+            alt="{{companyName}} Logo"
+            class="logo"
+          />
+          <div class="company-info">
+            <h1>{{companyName}}</h1>
+            <div class="company-tagline">
+              {{#if companyTagline}}{{companyTagline}}{{else}}GOOD FOOD BEGINS AT THE SOURCE{{/if}}
+            </div>
+            <div class="company-contact">
+              {{companyAddress}} • {{companyCity}}<br />
+              {{companyEmail}} • {{companyPhone}}
+            </div>
+            <div class="company-website">🌐 {{#if companyWebsite}}{{companyWebsite}}{{else}}www.flashsalesonline.com{{/if}}</div>
+            {{#if sellerGST}}
+            <div class="gst-info">
+              <strong>Vendor GSTIN:</strong> {{sellerGST}}
+            </div>
+            {{/if}}
+          </div>
+        </div>
+        <div class="invoice-label">
+          <h2>INVOICE</h2>
+          <div class="inv-number">{{invoiceNumber}}</div>
+        </div>
+      </div>
+
+      <div class="detail-cards">
+        <div class="card">
+          <h3>Bill To</h3>
+          <p class="highlight">{{customerName}}</p>
+          <p>{{customerAddress}}</p>
+          <p>{{customerCity}}</p>
+          <p>{{customerCountry}}</p>
+          {{#if sellerGST}}
+          <div
+            style="
+              margin-top: 8px;
+              padding-top: 8px;
+              border-top: 1px solid #e0e0e0;
+            "
+          >
+            {{#if buyerGST}}
+            <p
+              style="
+                font-size: 10px;
+                color: #7cb342;
+                font-weight: 700;
+                margin: 0 0 4px 0;
+              "
+            >
+              ✓ GST Claimed
+            </p>
+            <p style="font-size: 10px; color: #1a4d2e; margin: 0">
+              <strong>GSTIN:</strong> {{buyerGST}}
+            </p>
+            {{else}}
+            <p style="font-size: 9px; color: #999; margin: 0">
+              GST Not Claimed
+            </p>
+            {{/if}}
+          </div>
+          {{/if}}
+        </div>
+        <div class="card">
+          <h3>Invoice Date</h3>
+          <p class="highlight">{{invoiceDate}}</p>
+          <p style="margin-top: 6px; font-size: 10px; color: #888">Order ID:</p>
+          <p style="font-size: 10px; word-break: break-all">{{orderId}}</p>
+        </div>
+        <div class="card">
+          <h3>Status</h3>
+          <span class="status-tag">● {{orderStatus}}</span>
+        </div>
+      </div>
+
+      <div class="items-section">
+        <div class="section-title">Order Items</div>
+        <table>
+          <thead>
+            <tr>
+              <th>DESCRIPTION</th>
+              <th style="width: 80px; text-align: center">HSN</th>
+              <th style="width: 50px; text-align: center">QTY</th>
+              <th style="width: 90px; text-align: right">UNIT PRICE</th>
+              <th style="width: 90px">AMOUNT</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each items}}
+            <tr>
+              <td>
+                <div class="product-name">{{this.name}}</div>
+                <div class="product-desc">{{this.description}}</div>
+              </td>
+              <td style="text-align: center; font-size: 11px; color: #666">
+                {{this.hsn}}
+              </td>
+              <td style="text-align: center; font-weight: 700">
+                {{this.quantity}}
+              </td>
+              <td style="text-align: right">{{this.price}}</td>
+              <td style="text-align: right; font-weight: 700; color: #1a4d2e">
+                {{this.total}}
+              </td>
+            </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="totals-section">
+        <div class="totals-box">
+          <div class="total-row">
+            <span>Subtotal</span>
+            <span>{{subtotal}}</span>
+          </div>
+          {{#if showGST}}
+          <div class="total-row">
+            <span>GST ({{gstPercentage}}%)</span>
+            <span>{{gstAmount}}</span>
+          </div>
+          <div
+            style="
+              font-size: 10px;
+              color: #1a4d2e;
+              background: #f0f7f0;
+              border: 1px solid #7cb342;
+              border-left: 3px solid #7cb342;
+              padding: 10px 15px;
+              margin: 8px 0;
+              border-radius: 4px;
+            "
+          >
+            <p style="margin: 0 0 6px 0; font-weight: 700; color: #1a4d2e">
+              GST Details:
+            </p>
+            <p style="margin: 3px 0">
+              <strong>Vendor GSTIN:</strong> {{sellerGST}}
+            </p>
+            {{#if buyerGST}}
+            <p style="margin: 3px 0; color: #7cb342">
+              <strong>✓ Buyer GSTIN:</strong> {{buyerGST}}
+            </p>
+            <p
+              style="
+                margin: 6px 0 0 0;
+                font-size: 9px;
+                font-style: italic;
+                color: #666;
+              "
+            >
+              * Buyer is eligible to claim input tax credit with this GSTIN
+            </p>
+            {{else}}
+            <p
+              style="
+                margin: 6px 0 0 0;
+                font-size: 9px;
+                font-style: italic;
+                color: #999;
+              "
+            >
+              * GST paid by buyer, input credit not claimed
+            </p>
+            {{/if}}
+          </div>
+          {{else}}
+          <div class="total-row">
+            <span>Tax (Included)</span>
+            <span>{{tax}}</span>
+          </div>
+          {{/if}}
+          <div class="total-row">
+            <span>Shipping</span>
+            <span>{{shipping}}</span>
+          </div>
+          <div class="total-row grand">
+            <span>GRAND TOTAL</span>
+            <span>{{grandTotal}}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <p>
+          Thank you for choosing {{companyName}}. We appreciate your
+          business!<br />
+          For any queries, please contact our support team.
+        </p>
+        <div class="signature-section">
+          <div class="sig-line">Authorized Signatory</div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

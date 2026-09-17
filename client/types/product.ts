@@ -4,6 +4,7 @@ export interface ProductImage {
 }
 
 export interface ProductDetail {
+  id?: string
   slug: string
   name: string
   eyebrow: string

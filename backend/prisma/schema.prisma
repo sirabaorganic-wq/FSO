@@ -1,0 +1,999 @@
+// ══════════════════════════════════════════════════════════════════════════════
+//  FLASH SALES ONLINE (FSO) — NEON POSTGRESQL PRISMA SCHEMA
+//  Heritage Kitchen Marketplace ("Good Food Begins at the Source")
+// ══════════════════════════════════════════════════════════════════════════════
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum Role {
+  CUSTOMER
+  ADMIN
+  CONTENT_EDITOR
+  OPERATIONS_MANAGER
+  CUSTOMER_SUPPORT
+  FINANCE_ADMIN
+  PRODUCER_MANAGER
+  VENDOR_ONBOARDER
+  BLOG_CREATOR
+}
+
+enum BusinessType {
+  MANUFACTURER
+  DISTRIBUTOR
+  FARMER
+  PROCESSOR
+  WHOLESALER
+  ARTISAN
+  COOPERATIVE
+  TRADITIONAL_PRODUCER
+  FAMILY_BUSINESS
+  WOMEN_COLLECTIVE
+  OTHER
+}
+
+enum ProducerType {
+  ARTISAN
+  SMALL_FARM
+  COOPERATIVE
+  FAMILY_BUSINESS
+  TRADITIONAL_CRAFT
+  WOMEN_COLLECTIVE
+  OTHER
+}
+
+enum VendorStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  DISPATCHED
+  SHIPPED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum VendorOrderStatus {
+  PENDING
+  ACCEPTED
+  PROCESSING
+  READY_TO_SHIP
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+enum RecipeDifficulty {
+  EASY
+  MEDIUM
+  ADVANCED
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 1. IDENTITY & AUTHENTICATION
+// ─────────────────────────────────────────────────────────────────────────────
+
+model User {
+  id                     String    @id @default(cuid())
+  name                   String
+  email                  String    @unique
+  password               String
+  phone                  String?
+  isAdmin                Boolean   @default(false)
+  role                   Role      @default(CUSTOMER)
+  isBlocked              Boolean   @default(false)
+  isEmailVerified        Boolean   @default(false)
+  isPhoneVerified        Boolean   @default(false)
+  claimGst               Boolean   @default(false)
+  buyerGstNumber         String?
+  businessName           String?
+
+  addresses              Json?     @default("[]")
+  notificationPreferences Json?   @default("{}")
+  cart                   Json?     @default("[]")
+  wishlist               String[]  @default([])
+
+  failedLoginAttempts    Int       @default(0)
+  accountLockUntil       DateTime?
+  resetPasswordToken     String?
+  resetPasswordExpire    DateTime?
+  lastLogin              DateTime?
+
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  // Relations
+  orders                 Order[]
+  reviews                Review[]
+  notifications          Notification[]
+  articlesCreated        Article[]         @relation("ArticleCreatedBy")
+  recipesCreated         Recipe[]          @relation("RecipeCreatedBy")
+  ingredientsCreated     Ingredient[]      @relation("IngredientCreatedBy")
+  collectionsCreated     Collection[]      @relation("CollectionCreatedBy")
+  bannersCreated         Banner[]          @relation("BannerCreatedBy")
+  adminNotes             VendorAdminNote[] @relation("AdminNoteAuthor")
+  approvedVendors        Vendor[]          @relation("VendorApprovedBy")
+  subadminApprovedVendors Vendor[]         @relation("VendorSubadminApprovedBy")
+  verifiedVendors        Vendor[]          @relation("VendorVerifiedBy")
+  verifiedBadges         VendorVerificationBadge[] @relation("BadgeVerifiedBy")
+
+  @@index([email])
+  @@index([role])
+}
+
+model OTP {
+  id          String   @id @default(cuid())
+  identifier  String
+  type        String   // "email" or "phone"
+  otp         String   // hashed bcrypt OTP
+  attempts    Int      @default(0)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([identifier, type])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2. PRODUCERS & VENDORS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Vendor {
+  id                        String       @id @default(cuid())
+  slug                      String       @unique
+  businessName              String
+  businessType              BusinessType @default(ARTISAN)
+  producerType              ProducerType @default(ARTISAN)
+  businessDescription       String?
+  logo                      String?
+  contactPerson             String
+  email                     String       @unique
+  phone                     String
+  alternatePhone            String?
+  website                   String?
+  status                    VendorStatus @default(PENDING)
+  isActive                  Boolean      @default(true)
+
+  // Heritage & Regional Provenance
+  village                   String?
+  district                  String?
+  region                    String?      // e.g. "Himalayan Foothills", "Coastal Andhra"
+  producerStory             Json?        // { headline, body, journey[] }
+  traditionalExpertise      String[]     @default([])
+  processingMethods         String[]     @default([])
+  yearsInOperation          Int?
+  generationCount           Int?         // e.g. 3 for "3rd generation"
+
+  // Address
+  addressStreet             String?
+  addressCity               String
+  addressState              String
+  addressPostalCode         String
+  addressCountry            String       @default("India")
+
+  // Shiprocket Logistics Setup
+  shiprocketPickupCode      String?
+  shiprocketPickupStatus    String       @default("unregistered")
+  shiprocketLocationName    String?
+  shiprocketLocationId      String?
+  shiprocketRegisteredAt    DateTime?
+  shiprocketLastVerifiedAt  DateTime?
+  shiprocketLastError       String?
+  pickupAddress             Json?
+
+  // Payout & Payment Route
+  razorpayLinkedAccountId   String?
+  bankDetails               Json?
+
+  // Compliance & Registration
+  gstNumber                 String?
+  panNumber                 String?
+  fssaiNumber               String?
+  isBusinessRegistered      String       @default("yes")
+  gstApplicable             String       @default("yes")
+  authorizedSignatoryName   String?
+  maintainsTraceabilityRecords String    @default("yes")
+
+  // Certifications (Open - non-locked)
+  certifications            String[]     @default([])
+  certificationsVerified    Boolean      @default(false)
+  certificationsVerifiedAt  DateTime?
+  organicCertification      Json?
+
+  // Media
+  gallery                   String[]     @default([])
+  videos                    String[]     @default([])
+  tags                      String[]     @default([])
+  socialLinks               Json?
+  shopSettings              Json?        // { shopSlug, isPublished, banner, bio }
+  metrics                   Json?        // { averageRating, totalSales, totalReviews }
+
+  rejectionReason           String?
+  approvedAt                DateTime?
+  approvedById              String?
+  approvedBy                User?        @relation("VendorApprovedBy", fields: [approvedById], references: [id])
+  subadminApprovedAt        DateTime?
+  subadminApprovedById      String?
+  subadminApprovedBy        User?        @relation("VendorSubadminApprovedBy", fields: [subadminApprovedById], references: [id])
+  verifiedById              String?
+  verifiedBy                User?        @relation("VendorVerifiedBy", fields: [verifiedById], references: [id])
+
+  createdAt                 DateTime     @default(now())
+  updatedAt                 DateTime     @updatedAt
+
+  // Relations
+  products                  Product[]
+  vendorOrders              VendorOrder[]
+  adminNotes                VendorAdminNote[]
+  verificationBadges        VendorVerificationBadge[]
+  articleLinks              ArticleProducer[]
+  vendorTransfers           VendorTransfer[]
+  enterpriseSettlements     EnterpriseSettlement[]
+  vendorMessages            VendorMessage[]
+
+  @@index([status, isActive])
+  @@index([addressState])
+  @@index([region])
+  @@index([businessType])
+}
+
+model VendorAdminNote {
+  id        String   @id @default(cuid())
+  vendorId  String
+  vendor    Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  note      String
+  addedById String
+  addedBy   User     @relation("AdminNoteAuthor", fields: [addedById], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model VendorVerificationBadge {
+  id         String    @id @default(cuid())
+  vendorId   String
+  vendor     Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  verified   Boolean   @default(false)
+  type       String    // "platform_verified", "community_verified", "certified_producer"
+  verifiedAt DateTime?
+  verifiedById String?
+  verifiedBy User?     @relation("BadgeVerifiedBy", fields: [verifiedById], references: [id])
+  createdAt  DateTime  @default(now())
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 3. CATEGORIES & CATALOG
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Category {
+  id           String    @id @default(cuid())
+  name         String    @unique
+  slug         String    @unique
+  description  String?
+  image        String?
+  displayOrder Int       @default(0)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  products     Product[]
+
+  @@index([slug])
+}
+
+model Product {
+  id                     String    @id @default(cuid())
+  name                   String
+  slug                   String    @unique
+  eyebrow                String?   // Short provenance label e.g. "Heirloom Grain"
+  description            String
+  shortDescription       String?
+  fullDescription        String?
+
+  price                  Float
+  compareAtPrice         Float?
+  costPrice              Float?
+  currency               String    @default("INR")
+  sku                    String?
+  stockQuantity          Int       @default(0)
+  hsn                    String?
+
+  category               String    // e.g. "Herbs", "Honey", "Grains", "Spices"
+  categoryId             String?
+  categoryRef            Category? @relation(fields: [categoryId], references: [id])
+  tag                    String?
+  tags                   String[]  @default([])
+
+  image                  String?
+  image2                 String?
+  images                 String[]  @default([])
+  videos                 String[]  @default([])
+  features               String[]  @default([])
+  ingredients            String?
+  packSize               String?
+  options                Json?     @default("[]") // weight / size variants [{ label, price, mrp }]
+
+  // Provenance & Source
+  originVillage          String?
+  originDistrict         String?
+  originState            String?
+  originRegion           String?
+  originCountry          String    @default("India")
+  originStory            String?
+  originCoordinates      Json?     // { lat, lng }
+
+  // Agricultural & Processing
+  harvestSeason          String?
+  harvestDate            String?
+  seasonalAvailability   String?
+  processingMethod       String?
+  traditionalPreparation String?
+  preparationStory       String?
+
+  // Culinary & Storage
+  servingSuggestions     String?
+  culinaryUses           String[]  @default([])
+  storageInstructions    String?
+  faqs                   Json?     @default("[]")
+  nutrition              Json?     @default("[]")
+  nutritionNote          String?
+
+  // Certifications
+  certifications         String[]  @default([])
+  batchNumber            String?   @default("")
+  batchInfo              String?   @default("")
+
+  // Producer / Vendor
+  vendorId               String?
+  vendor                 Vendor?   @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  isVendorProduct        Boolean   @default(false)
+  vendorStatus           String    @default("approved") // "pending", "approved", "rejected"
+  vendorRejectionReason  String?
+
+  // Marketplace Visibility & Ratings
+  isPublic               Boolean   @default(true)
+  isActive               Boolean   @default(true)
+  rating                 Float     @default(0)
+  numReviews             Int       @default(0)
+
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  // Relations
+  orderItems             OrderItem[]
+  reviews                Review[]
+  articleLinks           ArticleProduct[]
+  recipeLinks            RecipeProduct[]
+  ingredientLinks        IngredientProduct[]
+  collectionLinks        CollectionProduct[]
+  productCompliance      ProductCompliance?
+  productBatches         ProductBatch[]
+
+  @@index([slug])
+  @@index([category])
+  @@index([isPublic, isActive])
+  @@index([vendorId, vendorStatus])
+  @@index([originState])
+  @@index([price])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 4. CART & ORDERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  items     CartItem[]
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  quantity  Int      @default(1)
+  variant   String?  // variant label e.g. "500g"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cartId, productId, variant])
+}
+
+model Order {
+  id                     String        @id @default(cuid())
+  orderNumber            String        @unique
+  userId                 String
+  user                   User          @relation(fields: [userId], references: [id])
+
+  status                 OrderStatus   @default(PENDING)
+  paymentStatus          PaymentStatus @default(PENDING)
+
+  // Pricing breakdown
+  totalPrice             Float
+  subtotal               Float
+  taxPrice               Float         @default(0)
+  shippingPrice          Float         @default(0)
+  discountPrice          Float         @default(0)
+  couponApplied          String?
+
+  // Shipping details
+  shippingAddress        Json          // { name, address, city, state, postalCode, country, phone }
+  billingAddress         Json?
+
+  // Payment integration
+  paymentMethod          String        @default("razorpay")
+  razorpayOrderId        String?
+  razorpayPaymentId      String?
+  razorpaySignature      String?
+  paidAt                 DateTime?
+
+  // GST
+  gstClaimed             Boolean       @default(false)
+  buyerGstNumber         String?
+  businessName           String?
+
+  deliveredAt            DateTime?
+  cancelledAt            DateTime?
+  cancellationReason     String?
+
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  // Relations
+  orderItems             OrderItem[]
+  vendorOrders           VendorOrder[]
+  payments               Payment[]
+  refunds                RefundLog[]
+
+  @@index([orderNumber])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  vendorId    String?
+
+  name        String
+  image       String?
+  quantity    Int
+  price       Float
+  total       Float
+  hsn         String?
+  taxRate     Float    @default(0)
+  taxAmount   Float    @default(0)
+  variant     String?
+}
+
+model VendorOrder {
+  id                    String            @id @default(cuid())
+  vendorOrderNumber     String            @unique
+  orderId               String
+  order                 Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  vendorId              String
+  vendor                Vendor            @relation(fields: [vendorId], references: [id])
+
+  status                VendorOrderStatus @default(PENDING)
+  subtotal              Float
+  shippingFee           Float             @default(0)
+  taxAmount             Float             @default(0)
+  commissionRate        Float             @default(0)
+  commissionAmount      Float             @default(0)
+  payoutAmount          Float
+  payoutStatus          String            @default("pending") // "pending", "processing", "paid"
+
+  // Shiprocket
+  shiprocketOrderId     String?
+  shipmentId            String?
+  awbCode               String?
+  courierName           String?
+  trackingUrl           String?
+  shippedAt             DateTime?
+  deliveredAt           DateTime?
+
+  items                 Json              // JSON snapshot of line items for this vendor
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  @@index([orderId])
+  @@index([vendorId])
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 5. PAYMENTS & WEBHOOKS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Payment {
+  id                 String        @id @default(cuid())
+  orderId            String
+  order              Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  razorpayOrderId    String
+  razorpayPaymentId  String        @unique
+  razorpaySignature  String?
+  amount             Float
+  currency           String        @default("INR")
+  status             PaymentStatus @default(PENDING)
+  method             String?
+  bank               String?
+  wallet             String?
+  vpa                String?
+  errorReason        String?
+  rawResponse        Json?
+
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  @@index([orderId])
+  @@index([razorpayOrderId])
+}
+
+model RefundLog {
+  id                 String   @id @default(cuid())
+  orderId            String
+  order              Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  paymentId          String?
+  razorpayRefundId   String?  @unique
+  amount             Float
+  reason             String?
+  status             String   @default("processed")
+  createdAt          DateTime @default(now())
+
+  @@index([orderId])
+}
+
+model WebhookLog {
+  id         String   @id @default(cuid())
+  eventId    String   @unique
+  eventType  String
+  provider   String   @default("razorpay") // "razorpay", "shiprocket"
+  payload    Json
+  status     String   @default("processed") // "processed", "failed", "ignored"
+  processedAt DateTime @default(now())
+
+  @@index([eventId])
+  @@index([eventType])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 6. PROMOTIONS, REVIEWS & NOTIFICATIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Coupon {
+  id            String       @id @default(cuid())
+  code          String       @unique
+  description   String?
+  discountType  DiscountType @default(PERCENTAGE)
+  discountValue Float
+  minOrderValue Float        @default(0)
+  maxDiscount   Float?
+  validFrom     DateTime     @default(now())
+  validUntil    DateTime
+  usageLimit    Int          @default(100)
+  usageCount    Int          @default(0)
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([code, isActive])
+}
+
+model Review {
+  id                 String   @id @default(cuid())
+  productId          String
+  product            Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User     @relation(fields: [userId], references: [id])
+  rating             Int      // 1 to 5
+  title              String?
+  comment            String
+  isVerifiedPurchase Boolean  @default(false)
+  isApproved         Boolean  @default(true)
+  images             String[] @default([])
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([productId, userId])
+  @@index([productId, isApproved])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendorId  String?
+  title     String
+  message   String
+  type      String   @default("order") // "order", "status", "promo", "system"
+  isRead    Boolean  @default(false)
+  link      String?
+  data      Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@index([vendorId, isRead])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 7. FSO HERITAGE CONTENT SYSTEM
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Article {
+  id              String            @id @default(cuid())
+  title           String
+  slug            String            @unique
+  excerpt         String?
+  content         String            // Sanitized HTML body
+  image           String?
+  images          String[]          @default([])
+  category        String            @default("Kitchen Wisdom")
+  authorName      String?
+  authorImage     String?
+  authorBio       String?
+  readTime        Int?              // minutes
+  published       Boolean           @default(false)
+  publishedAt     DateTime?
+  tags            String[]          @default([])
+  metaTitle       String?
+  metaDescription String?
+
+  createdById     String?
+  createdBy       User?             @relation("ArticleCreatedBy", fields: [createdById], references: [id])
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // M:N Junctions
+  linkedProducts  ArticleProduct[]
+  linkedRecipes   ArticleRecipe[]
+  linkedProducers ArticleProducer[]
+
+  @@index([slug])
+  @@index([published, publishedAt])
+  @@index([category])
+}
+
+model Recipe {
+  id                  String             @id @default(cuid())
+  title               String
+  slug                String             @unique
+  story               String?
+  excerpt             String?
+  region              String?            // "North India", "South India", etc.
+  cuisine             String?            // "Rajasthani", "Tamil", "Bengali", etc.
+  difficulty          RecipeDifficulty   @default(EASY)
+  prepTime            Int?               // minutes
+  cookTime            Int?
+  totalTime           Int?
+  servings            Int?
+  image               String?
+  images              String[]           @default([])
+  video               String?
+  ingredients         Json               // structured ingredient lines [{ name, quantity, note }]
+  steps               Json               // structured steps [{ stepNumber, instruction, image }]
+  tips                String[]           @default([])
+  storageInstructions String?
+  tags                String[]           @default([])
+  published           Boolean            @default(false)
+  publishedAt         DateTime?
+  metaTitle           String?
+  metaDescription     String?
+
+  createdById         String?
+  createdBy           User?              @relation("RecipeCreatedBy", fields: [createdById], references: [id])
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  linkedProducts      RecipeProduct[]
+  linkedIngredients   RecipeIngredient[]
+  articleLinks        ArticleRecipe[]
+
+  @@index([slug])
+  @@index([published, publishedAt])
+  @@index([region])
+}
+
+model Ingredient {
+  id                  String              @id @default(cuid())
+  name                String
+  slug                String              @unique
+  hindiName           String?
+  regionalNames       Json?               @default("[]") // [{ language, name }]
+  botanicalName       String?
+  descriptor          String?             // e.g. "Stone-ground flour", "Wild forest honey"
+  image               String?
+  images              String[]            @default([])
+  origin              String?
+  history             String?
+  regionalImportance  String?
+  culinaryUses        String[]            @default([])
+  flavorProfile       String?
+  pairingWith         String[]            @default([])
+  storage             String?
+  tips                String[]            @default([])
+  faqs                Json?               @default("[]")
+  nutritionHighlights String[]            @default([])
+  tags                String[]            @default([])
+  published           Boolean             @default(false)
+
+  createdById         String?
+  createdBy           User?               @relation("IngredientCreatedBy", fields: [createdById], references: [id])
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  linkedProducts      IngredientProduct[]
+  recipeLinks         RecipeIngredient[]
+
+  @@index([slug])
+  @@index([published])
+}
+
+model Collection {
+  id              String              @id @default(cuid())
+  title           String
+  slug            String              @unique
+  subtitle        String?
+  story           String?
+  image           String?
+  images          String[]            @default([])
+  category        String              @default("Kitchen Collection")
+  isPublished     Boolean             @default(false)
+  publishedAt     DateTime?
+  displayOrder    Int                 @default(0)
+  metaTitle       String?
+  metaDescription String?
+
+  createdById     String?
+  createdBy       User?               @relation("CollectionCreatedBy", fields: [createdById], references: [id])
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  products        CollectionProduct[]
+
+  @@index([slug])
+  @@index([isPublished, displayOrder])
+}
+
+model Banner {
+  id           String    @id @default(cuid())
+  title        String?
+  subtitle     String?
+  image        String
+  ctaText      String?
+  ctaHref      String?
+  position     String    @default("home_hero")
+  isActive     Boolean   @default(true)
+  displayOrder Int       @default(0)
+  activeFrom   DateTime?
+  activeTo     DateTime?
+
+  createdById  String?
+  createdBy    User?     @relation("BannerCreatedBy", fields: [createdById], references: [id])
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([position, isActive])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 8. CONTENT JUNCTION TABLES
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ArticleProduct {
+  articleId String
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, productId])
+}
+
+model ArticleRecipe {
+  articleId String
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  recipeId  String
+  recipe    Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, recipeId])
+}
+
+model ArticleProducer {
+  articleId String
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  vendorId  String
+  vendor    Vendor  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, vendorId])
+}
+
+model RecipeProduct {
+  recipeId  String
+  recipe    Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([recipeId, productId])
+}
+
+model RecipeIngredient {
+  recipeId     String
+  recipe       Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredientId String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@id([recipeId, ingredientId])
+}
+
+model IngredientProduct {
+  ingredientId String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  productId    String
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([ingredientId, productId])
+}
+
+model CollectionProduct {
+  collectionId String
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  productId    String
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  displayOrder Int        @default(0)
+
+  @@id([collectionId, productId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 9. TRACEABILITY, SETTINGS & PLATFORM INFRASTRUCTURE
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ProductBatch {
+  id              String   @id @default(cuid())
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  batchNumber     String
+  traceId         String   @unique
+  manufacturingDate DateTime?
+  expiryDate      DateTime?
+  status          String   @default("active") // "active", "exhausted", "recalled"
+  traceability    Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([productId, batchNumber])
+}
+
+model ProductCompliance {
+  id                  String   @id @default(cuid())
+  productId           String   @unique
+  product             Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  status              String   @default("approved")
+  standard            String?
+  certificationBody   String?
+  certificateNumber   String?
+  validUntil          DateTime?
+  sirabaQualification Json?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model ComplianceAuditLog {
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  action     String
+  performedBy String?
+  details    Json?
+  createdAt  DateTime @default(now())
+}
+
+model TraceIdCounter {
+  id      String @id @default(cuid())
+  year    Int    @unique
+  seq     Int    @default(0)
+}
+
+model SiteSettings {
+  id            String   @id @default(cuid())
+  key           String   @unique
+  value         Json
+  updatedAt     DateTime @updatedAt
+}
+
+model GSTSettings {
+  id            String   @id @default(cuid())
+  legalName     String   @default("Flash Sales Online")
+  tradeName     String   @default("FSO")
+  gstin         String?
+  addressState  String?
+  taxSlabs      Json?
+  updatedAt     DateTime @updatedAt
+}
+
+model VendorTransfer {
+  id            String   @id @default(cuid())
+  vendorId      String
+  vendor        Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  amount        Float
+  transferId    String?  @unique
+  status        String   @default("pending")
+  createdAt     DateTime @default(now())
+}
+
+model EnterpriseSettlement {
+  id            String   @id @default(cuid())
+  vendorId      String
+  vendor        Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  period        String
+  amount        Float
+  status        String   @default("pending")
+  createdAt     DateTime @default(now())
+}
+
+model VendorMessage {
+  id         String   @id @default(cuid())
+  vendorId   String
+  vendor     Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  sender     String
+  message    String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model Inquiry {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String?
+  message   String
+  status    String   @default("new")
+  createdAt DateTime @default(now())
+}
+
+model ContactSubmission {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  message   String
+  createdAt DateTime @default(now())
+}

@@ -1,229 +1,287 @@
 'use client'
 
-import { useState } from 'react'
-import Image from 'next/image'
-import { ShoppingCart, Clock, Truck, RotateCcw, FileText, CheckCircle2, AlertCircle } from 'lucide-react'
-import { mockAdminOrders } from '@/data/admin/orders'
+import { useState, useEffect } from 'react'
+import { ShoppingCart, AlertCircle, RefreshCw, Eye, Truck, CheckCircle2, ChevronRight } from 'lucide-react'
 import { DataTable } from '../data-table'
-import { AdminOrder } from '@/types/admin'
+import {
+  getAdminOrdersApi,
+  updateAdminOrderStatusApi,
+  type AdminOrderItem,
+} from '@/lib/api/admin'
 
 export function OrdersView() {
-  const [orders, setOrders] = useState<AdminOrder[]>(mockAdminOrders)
-  const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null)
-  const [invoiceModalOrder, setInvoiceModalOrder] = useState<AdminOrder | null>(null)
+  const [orders, setOrders] = useState<AdminOrderItem[]>([])
+  const [selectedOrder, setSelectedOrder] = useState<AdminOrderItem | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [actionLoading, setActionLoading] = useState(false)
+  const [actionNotice, setActionNotice] = useState<string | null>(null)
+
+  const loadOrders = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await getAdminOrdersApi()
+      setOrders(data || [])
+    } catch (err: unknown) {
+      console.error('Failed to load orders:', err)
+      setError(err instanceof Error ? err.message : 'Failed to fetch order records')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadOrders()
+  }, [])
+
+  const handleUpdateStatus = async (orderId: string, newStatus: string) => {
+    try {
+      setActionLoading(true)
+      await updateAdminOrderStatusApi(orderId, newStatus)
+      setActionNotice(`Order status updated to ${newStatus}`)
+      await loadOrders()
+      if (selectedOrder?.id === orderId) {
+        setSelectedOrder((prev) => (prev ? { ...prev, status: newStatus } : null))
+      }
+    } catch (err: unknown) {
+      console.error('Status update failed:', err)
+      setActionNotice(err instanceof Error ? err.message : 'Failed to update order status')
+    } finally {
+      setActionLoading(false)
+    }
+  }
 
   const columns = [
     {
       key: 'orderNumber',
       header: 'Order Ref & Date',
-      accessor: (o: AdminOrder) => (
+      accessor: (o: AdminOrderItem) => (
         <div>
           <span className="font-semibold text-foreground">{o.orderNumber}</span>
-          <p className="text-[10px] text-muted-foreground">{o.date}</p>
+          <p className="text-[10px] text-muted-foreground">
+            {o.createdAt ? new Date(o.createdAt).toLocaleDateString() : 'N/A'}
+          </p>
         </div>
       ),
       sortable: true,
     },
     {
       key: 'customer',
-      header: 'Customer Details',
-      accessor: (o: AdminOrder) => (
+      header: 'Customer',
+      accessor: (o: AdminOrderItem) => (
         <div>
-          <span className="font-medium text-foreground">{o.customerName}</span>
-          <p className="text-[10px] text-muted-foreground">{o.customerPhone}</p>
+          <span className="font-medium text-foreground">{o.user?.name || 'Customer'}</span>
+          <p className="text-[10px] text-muted-foreground">{o.user?.email || 'N/A'}</p>
         </div>
       ),
-    },
-    {
-      key: 'producer',
-      header: 'Fulfilling Producer',
-      accessor: (o: AdminOrder) => <span className="text-xs text-muted-foreground">{o.producerName}</span>,
+      sortable: true,
     },
     {
       key: 'amount',
       header: 'Total & Payment',
-      accessor: (o: AdminOrder) => (
+      accessor: (o: AdminOrderItem) => (
         <div>
-          <span className="font-serif font-bold text-foreground">₹{o.totalAmount}</span>
-          <p className="text-[10px] text-muted-foreground font-semibold">{o.paymentMethod} ({o.paymentStatus})</p>
+          <span className="font-serif font-bold text-foreground">₹{o.totalPrice}</span>
+          <p className="text-[10px] text-muted-foreground font-semibold">
+            {o.paymentMethod} ({o.isPaid ? 'PAID' : 'PENDING'})
+          </p>
         </div>
       ),
       sortable: true,
     },
     {
       key: 'status',
-      header: 'Fulfillment Status',
-      accessor: (o: AdminOrder) => (
-        <span
-          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-            o.status === 'Delivered'
-              ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-              : o.status === 'Processing'
-              ? 'bg-amber-500/10 text-amber-700'
-              : o.status === 'Shipped'
-              ? 'bg-indigo-500/10 text-indigo-700'
-              : 'bg-rose-500/10 text-rose-700'
-          }`}
-        >
-          {o.status}
-        </span>
-      ),
+      header: 'Order Status',
+      accessor: (o: AdminOrderItem) => {
+        const st = (o.status || '').toUpperCase()
+        return (
+          <span
+            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+              st === 'DELIVERED'
+                ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                : st === 'PROCESSING' || st === 'CONFIRMED'
+                ? 'bg-amber-500/10 text-amber-700'
+                : st === 'SHIPPED'
+                ? 'bg-indigo-500/10 text-indigo-700'
+                : 'bg-rose-500/10 text-rose-700'
+            }`}
+          >
+            {st}
+          </span>
+        )
+      },
+      sortable: true,
     },
     {
       key: 'actions',
       header: 'Actions',
-      accessor: (o: AdminOrder) => (
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setSelectedOrder(o)}
-            className="text-[11px] font-bold text-primary hover:underline"
-          >
-            Timeline
-          </button>
-          <button
-            type="button"
-            onClick={() => setInvoiceModalOrder(o)}
-            className="text-[11px] font-bold text-secondary hover:underline"
-          >
-            Invoice
-          </button>
-        </div>
+      accessor: (o: AdminOrderItem) => (
+        <button
+          type="button"
+          onClick={() => setSelectedOrder(o)}
+          className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1"
+        >
+          <Eye className="size-3" /> Inspect
+        </button>
       ),
     },
   ]
+
+  if (loading) {
+    return (
+      <div className="space-y-4 p-4 animate-pulse">
+        <div className="h-8 w-48 bg-surface-muted rounded" />
+        <div className="h-64 bg-surface-muted rounded-xl" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-8 text-center space-y-4">
+        <AlertCircle className="size-10 text-destructive mx-auto" />
+        <p className="text-sm font-semibold text-foreground">{error}</p>
+        <button
+          type="button"
+          onClick={loadOrders}
+          className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90"
+        >
+          <RefreshCw className="size-3.5" /> Retry
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <span className="eyebrow">Logistics & Sales</span>
+          <span className="eyebrow">Logistics & Sales Operations</span>
           <h2 className="font-serif text-2xl font-bold text-foreground">Order Management</h2>
         </div>
-        <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-          <span>Active Orders: 3,240</span>
-          <span>•</span>
-          <span className="text-emerald-700 font-bold">98.2% On-Time Delivery</span>
+        <div className="text-xs text-muted-foreground font-semibold">
+          Total Orders: {orders.length}
         </div>
       </div>
 
-      <DataTable
-        data={orders}
-        columns={columns}
-        searchPlaceholder="Search order ref, customer name or producer..."
-        searchKey={(o) => `${o.orderNumber} ${o.customerName} ${o.producerName}`}
-        keyExtractor={(o) => o.id}
-      />
-
-      {/* Order Timeline Modal */}
-      {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-lg rounded-2xl border border-border bg-surface p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <div>
-                <h3 className="font-serif text-xl font-bold text-foreground">{selectedOrder.orderNumber}</h3>
-                <p className="text-xs text-muted-foreground">Placed on {selectedOrder.date}</p>
-              </div>
-              <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
-                {selectedOrder.status}
-              </span>
-            </div>
-
-            {/* Items Purchased */}
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground">Order Items ({selectedOrder.items.length})</p>
-              {selectedOrder.items.map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between rounded-lg border border-border p-2 text-xs bg-surface-muted/20">
-                  <div className="flex items-center gap-2">
-                    <div className="relative size-8 rounded border border-border overflow-hidden shrink-0">
-                      <Image src={item.image} alt={item.productName} fill className="object-cover" />
-                    </div>
-                    <span className="font-semibold text-foreground">{item.productName}</span>
-                  </div>
-                  <span className="font-bold text-foreground">
-                    {item.quantity}x ₹{item.price}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {/* Shipping Address */}
-            <div className="rounded-lg border border-border/80 p-3 text-xs bg-background/50 space-y-1">
-              <p className="font-semibold text-foreground">Delivery Address</p>
-              <p className="text-muted-foreground">{selectedOrder.shippingAddress}</p>
-              {selectedOrder.trackingNumber && (
-                <p className="text-[11px] font-bold text-secondary mt-1">
-                  Carrier: {selectedOrder.carrier} • Tracking #{selectedOrder.trackingNumber}
-                </p>
-              )}
-            </div>
-
-            {/* Timeline */}
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground mb-2">Fulfillment Activity History</p>
-              <div className="space-y-3 border-l-2 border-primary/30 pl-3">
-                {selectedOrder.timeline.map((step, idx) => (
-                  <div key={idx} className="space-y-0.5">
-                    <p className="text-xs font-bold text-foreground">{step.title} <span className="text-[10px] font-normal text-muted-foreground">({step.time})</span></p>
-                    <p className="text-[11px] text-muted-foreground">{step.description}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end pt-2">
-              <button
-                type="button"
-                onClick={() => setSelectedOrder(null)}
-                className="rounded-lg border border-border px-4 py-2 text-xs font-bold text-foreground hover:bg-surface-muted"
-              >
-                Close Timeline
-              </button>
-            </div>
-          </div>
+      {actionNotice && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs font-semibold text-primary flex items-center justify-between">
+          <span>{actionNotice}</span>
+          <button type="button" onClick={() => setActionNotice(null)} className="underline ml-2">
+            Dismiss
+          </button>
         </div>
       )}
 
-      {/* Invoice Modal Simulation */}
-      {invoiceModalOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-2xl space-y-4">
+      {orders.length === 0 ? (
+        <div className="rounded-xl border border-border bg-surface p-12 text-center text-xs text-muted-foreground space-y-2">
+          <ShoppingCart className="size-10 mx-auto text-muted-foreground/50 mb-2" />
+          <h3 className="font-serif text-base font-bold text-foreground">No Orders Recorded</h3>
+          <p>There are currently zero orders in the database. Customer checkouts and multi-vendor fulfillment operations will be tracked live here.</p>
+        </div>
+      ) : (
+        <DataTable
+          data={orders}
+          columns={columns}
+          searchKey={(o) => `${o.orderNumber || o.id} ${o.user?.name || ''}`}
+          keyExtractor={(o) => o.id}
+          searchPlaceholder="Search by order number or customer..."
+        />
+      )}
+
+      {/* Order Detail Modal */}
+      {selectedOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+          <div className="w-full max-w-2xl rounded-xl border border-border bg-surface p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto text-xs">
             <div className="flex items-center justify-between border-b border-border/60 pb-3">
               <div>
-                <p className="eyebrow">Tax Invoice</p>
-                <h3 className="font-serif text-xl font-bold text-foreground">Invoice #{invoiceModalOrder.orderNumber}</h3>
+                <h3 className="font-serif text-lg font-bold text-foreground">Order #{selectedOrder.orderNumber}</h3>
+                <p className="text-muted-foreground">Placed on {new Date(selectedOrder.createdAt).toLocaleString()}</p>
               </div>
-              <FileText className="size-6 text-primary" />
-            </div>
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Customer:</span>
-                <span className="font-semibold text-foreground">{invoiceModalOrder.customerName}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">GST Status:</span>
-                <span className="font-semibold text-emerald-600">5% GST Included</span>
-              </div>
-              <div className="flex justify-between font-bold border-t border-border pt-2 text-sm">
-                <span>Total Amount Billed:</span>
-                <span className="font-serif text-primary">₹{invoiceModalOrder.totalAmount}</span>
-              </div>
-            </div>
-            <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 type="button"
-                onClick={() => setInvoiceModalOrder(null)}
-                className="rounded-lg border border-border px-4 py-2 text-xs font-bold text-muted-foreground hover:bg-surface-muted"
+                onClick={() => setSelectedOrder(null)}
+                className="text-xs font-bold text-muted-foreground hover:text-foreground"
               >
-                Close Preview
+                Close
               </button>
-              <button
-                type="button"
-                onClick={() => alert('Tax Invoice PDF downloaded successfully.')}
-                className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90"
-              >
-                Download PDF
-              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-lg border border-border/60 bg-surface-muted/30 p-3">
+                <span className="text-muted-foreground block text-[10px] uppercase font-bold">Total Amount</span>
+                <span className="font-serif text-lg font-bold text-foreground">₹{selectedOrder.totalPrice}</span>
+              </div>
+              <div className="rounded-lg border border-border/60 bg-surface-muted/30 p-3">
+                <span className="text-muted-foreground block text-[10px] uppercase font-bold">Payment</span>
+                <span className="font-semibold text-foreground">{selectedOrder.isPaid ? 'PAID' : 'UNPAID'} ({selectedOrder.paymentMethod})</span>
+              </div>
+              <div className="rounded-lg border border-border/60 bg-surface-muted/30 p-3">
+                <span className="text-muted-foreground block text-[10px] uppercase font-bold">Status</span>
+                <span className="font-semibold text-foreground uppercase">{selectedOrder.status}</span>
+              </div>
+            </div>
+
+            {/* Multi-Vendor Order Breakdown */}
+            <div className="space-y-2 pt-2 border-t border-border/60">
+              <h4 className="font-serif font-bold text-foreground">Vendor Sub-Orders & Fulfillment</h4>
+              {(!selectedOrder.vendorOrders || selectedOrder.vendorOrders.length === 0) ? (
+                <p className="text-muted-foreground">Direct fulfillment (No split vendor orders).</p>
+              ) : (
+                <div className="space-y-2">
+                  {selectedOrder.vendorOrders.map((vo) => (
+                    <div key={vo.id} className="rounded-lg border border-border/60 p-3 flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold text-foreground">{vo.vendor?.businessName || 'Vendor'}</p>
+                        <p className="text-[10px] text-muted-foreground">Ref: {vo.vendorOrderNumber} • Status: {vo.status}</p>
+                        {vo.awbCode && (
+                          <p className="text-[10px] text-primary font-mono">AWB: {vo.awbCode} ({vo.courierName})</p>
+                        )}
+                      </div>
+                      <span className="font-serif font-bold text-foreground">₹{vo.subtotal}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Line Items */}
+            <div className="space-y-2 pt-2 border-t border-border/60">
+              <h4 className="font-serif font-bold text-foreground">Purchased Items</h4>
+              {(!selectedOrder.orderItems || selectedOrder.orderItems.length === 0) ? (
+                <p className="text-muted-foreground">No item lines recorded.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {selectedOrder.orderItems.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between py-1 border-b border-border/40 last:border-none">
+                      <div>
+                        <p className="font-semibold text-foreground">{item.name}</p>
+                        <p className="text-[10px] text-muted-foreground">Qty: {item.quantity} × ₹{item.price}</p>
+                      </div>
+                      <span className="font-serif font-bold text-foreground">₹{item.quantity * item.price}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Administrative Status Override */}
+            <div className="pt-2 border-t border-border/60 flex items-center justify-between">
+              <span className="font-semibold text-foreground">Administrative Status:</span>
+              <div className="flex items-center gap-2">
+                {['CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'].map((st) => (
+                  <button
+                    key={st}
+                    type="button"
+                    disabled={actionLoading || selectedOrder.status === st}
+                    onClick={() => handleUpdateStatus(selectedOrder.id, st)}
+                    className="rounded border border-border px-2 py-1 text-[10px] font-bold text-foreground hover:bg-surface-muted disabled:opacity-40"
+                  >
+                    Set {st}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>

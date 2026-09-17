@@ -1,21 +1,50 @@
 'use client'
 
 import { useState } from 'react'
-import { TrendingUp, ArrowUpRight, ShoppingBag, MapPin, Layers } from 'lucide-react'
-import { mockAnalyticsData } from '@/data/admin/analytics'
+import { TrendingUp, Layers, MapPin } from 'lucide-react'
 
-export function RevenueGraph() {
-  const [activePoint, setActivePoint] = useState<number | null>(7) // Default to latest month (Aug)
-  const data = mockAnalyticsData.monthlyRevenue
+interface MonthlyPoint {
+  month: string
+  revenue: number
+  orders: number
+}
 
-  const maxRevenue = Math.max(...data.map((d) => d.revenue)) * 1.15
+interface CategoryPoint {
+  category: string
+  percentage: number
+  revenue: number
+  color: string
+}
+
+interface StatePoint {
+  state: string
+  orders: number
+  revenue: number
+}
+
+export function RevenueGraph({
+  data = [],
+  totalRevenue = 0,
+}: {
+  data?: MonthlyPoint[]
+  totalRevenue?: number
+}) {
+  const [activePoint, setActivePoint] = useState<number | null>(null)
+
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug']
+  const displayData: MonthlyPoint[] =
+    data.length > 0
+      ? data
+      : months.map((m) => ({ month: m, revenue: 0, orders: 0 }))
+
+  const maxRevenue = Math.max(...displayData.map((d) => d.revenue), 1000)
   const width = 600
   const height = 220
   const paddingX = 40
   const paddingY = 30
 
-  const points = data.map((d, i) => {
-    const x = paddingX + (i * (width - paddingX * 2)) / (data.length - 1)
+  const points = displayData.map((d, i) => {
+    const x = paddingX + (i * (width - paddingX * 2)) / (displayData.length - 1)
     const y = height - paddingY - (d.revenue / maxRevenue) * (height - paddingY * 2)
     return { x, y, month: d.month, revenue: d.revenue, orders: d.orders }
   })
@@ -24,9 +53,7 @@ export function RevenueGraph() {
     (acc, p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`),
     ''
   )
-
   const areaD = `${pathD} L ${points[points.length - 1].x} ${height - paddingY} L ${points[0].x} ${height - paddingY} Z`
-
   const activeData = activePoint !== null ? points[activePoint] : points[points.length - 1]
 
   return (
@@ -45,8 +72,8 @@ export function RevenueGraph() {
               ₹{activeData.revenue.toLocaleString('en-IN')}
             </p>
           </div>
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-400">
-            <TrendingUp className="size-3.5" /> +18.4% YoY
+          <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted px-2.5 py-1 text-xs font-bold text-foreground">
+            {totalRevenue > 0 ? `₹${totalRevenue.toLocaleString('en-IN')} Cumulative` : '₹0 Live Baseline'}
           </span>
         </div>
       </div>
@@ -117,10 +144,20 @@ export function RevenueGraph() {
   )
 }
 
-export function OrdersBarGraph() {
-  const data = mockAnalyticsData.monthlyRevenue
+export function OrdersBarGraph({
+  data = [],
+  totalOrders = 0,
+}: {
+  data?: MonthlyPoint[]
+  totalOrders?: number
+}) {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug']
+  const displayData: MonthlyPoint[] =
+    data.length > 0
+      ? data
+      : months.map((m) => ({ month: m, revenue: 0, orders: 0 }))
 
-  const maxOrders = Math.max(...data.map((d) => d.orders)) * 1.2
+  const maxOrders = Math.max(...displayData.map((d) => d.orders), 10)
 
   return (
     <div className="rounded-xl border border-border bg-surface p-5 shadow-xs">
@@ -129,19 +166,19 @@ export function OrdersBarGraph() {
           <p className="eyebrow">Fulfillment Volume</p>
           <h3 className="font-serif text-xl font-bold text-foreground">Monthly Orders Processed</h3>
         </div>
-        <span className="text-xs font-bold text-secondary">3,240 Orders Total</span>
+        <span className="text-xs font-bold text-secondary">{totalOrders.toLocaleString('en-IN')} Orders Total</span>
       </div>
 
       <div className="mt-5 flex h-48 items-end gap-3 pt-4">
-        {data.map((item, idx) => {
-          const heightPercent = (item.orders / maxOrders) * 100
+        {displayData.map((item, idx) => {
+          const heightPercent = maxOrders > 0 ? (item.orders / maxOrders) * 100 : 0
           return (
             <div key={idx} className="group flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
               <div className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-bold text-foreground bg-surface-muted px-1.5 py-0.5 rounded border border-border">
                 {item.orders}
               </div>
               <div
-                style={{ height: `${heightPercent}%` }}
+                style={{ height: `${Math.max(heightPercent, 2)}%` }}
                 className="w-full rounded-t-md bg-secondary/80 group-hover:bg-secondary transition-all"
               />
               <span className="text-[10px] font-semibold text-muted-foreground mt-1">{item.month}</span>
@@ -153,15 +190,25 @@ export function OrdersBarGraph() {
   )
 }
 
-export function CategoryDonutChart() {
-  const categories = mockAnalyticsData.categoryShare
+export function CategoryDonutChart({
+  categories = [],
+}: {
+  categories?: CategoryPoint[]
+}) {
+  const displayCategories = categories.length > 0 ? categories : [
+    { category: 'Vedic Ghee', percentage: 20, revenue: 0, color: '#c99b38' },
+    { category: 'Cold Pressed Oils', percentage: 20, revenue: 0, color: '#a9582f' },
+    { category: 'Wild Honey', percentage: 20, revenue: 0, color: '#356b48' },
+    { category: 'Himalayan Spices', percentage: 20, revenue: 0, color: '#a33c2c' },
+    { category: 'Heirloom Grains', percentage: 20, revenue: 0, color: '#173e28' },
+  ]
 
   return (
     <div className="rounded-xl border border-border bg-surface p-5 shadow-xs">
       <div className="flex items-center justify-between border-b border-border/60 pb-4">
         <div>
           <p className="eyebrow">Marketplace Mix</p>
-          <h3 className="font-serif text-xl font-bold text-foreground">Category Sales Share</h3>
+          <h3 className="font-serif text-xl font-bold text-foreground">Category Share</h3>
         </div>
         <Layers className="size-4 text-muted-foreground" />
       </div>
@@ -169,8 +216,8 @@ export function CategoryDonutChart() {
       <div className="mt-4 flex flex-col sm:flex-row items-center gap-6">
         <div className="relative grid size-40 place-items-center shrink-0">
           <svg viewBox="0 0 100 100" className="size-full -rotate-90">
-            {categories.map((cat, i) => {
-              const prevTotal = categories.slice(0, i).reduce((sum, c) => sum + c.percentage, 0)
+            {displayCategories.map((cat, i) => {
+              const prevTotal = displayCategories.slice(0, i).reduce((sum, c) => sum + c.percentage, 0)
               const strokeDasharray = `${cat.percentage} ${100 - cat.percentage}`
               const strokeDashoffset = -prevTotal
               return (
@@ -190,13 +237,13 @@ export function CategoryDonutChart() {
             })}
           </svg>
           <div className="absolute flex flex-col items-center justify-center text-center">
-            <span className="font-serif text-xl font-bold text-foreground">100%</span>
-            <span className="text-[10px] text-muted-foreground font-semibold">5 Categories</span>
+            <span className="font-serif text-xl font-bold text-foreground">5</span>
+            <span className="text-[10px] text-muted-foreground font-semibold">Active Classes</span>
           </div>
         </div>
 
         <div className="w-full space-y-2.5">
-          {categories.map((cat) => (
+          {displayCategories.map((cat) => (
             <div key={cat.category} className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
                 <span className="size-2.5 rounded-full" style={{ backgroundColor: cat.color }} />
@@ -214,9 +261,11 @@ export function CategoryDonutChart() {
   )
 }
 
-export function StateSalesMap() {
-  const states = mockAnalyticsData.stateSales
-
+export function StateSalesMap({
+  states = [],
+}: {
+  states?: StatePoint[]
+}) {
   return (
     <div className="rounded-xl border border-border bg-surface p-5 shadow-xs">
       <div className="flex items-center justify-between border-b border-border/60 pb-4">
@@ -227,22 +276,28 @@ export function StateSalesMap() {
         <MapPin className="size-4 text-muted-foreground" />
       </div>
 
-      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {states.map((st) => (
-          <div
-            key={st.state}
-            className="flex items-center justify-between rounded-lg border border-border/60 bg-background/60 p-3 hover:border-border transition-colors"
-          >
-            <div>
-              <p className="text-xs font-bold text-foreground">{st.state}</p>
-              <p className="text-[11px] text-muted-foreground">{st.orders} Orders Delivered</p>
+      {states.length === 0 ? (
+        <div className="py-8 text-center text-xs text-muted-foreground">
+          <p>No regional sales records currently dispatched.</p>
+        </div>
+      ) : (
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {states.map((st) => (
+            <div
+              key={st.state}
+              className="flex items-center justify-between rounded-lg border border-border/60 bg-background/60 p-3 hover:border-border transition-colors"
+            >
+              <div>
+                <p className="text-xs font-bold text-foreground">{st.state}</p>
+                <p className="text-[11px] text-muted-foreground">{st.orders} Orders Delivered</p>
+              </div>
+              <div className="text-right">
+                <p className="font-serif text-sm font-bold text-primary">₹{st.revenue.toLocaleString('en-IN')}</p>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="font-serif text-sm font-bold text-primary">₹{st.revenue.toLocaleString('en-IN')}</p>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

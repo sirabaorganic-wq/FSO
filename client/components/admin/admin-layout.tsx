@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/auth-context'
 import { AdminSidebar } from './admin-sidebar'
 import { AdminTopbar } from './admin-topbar'
 import { AdminCommandPalette } from './admin-command-palette'
@@ -87,8 +89,43 @@ const viewTitles: Record<AdminViewType, { title: string; subtitle?: string }> = 
 }
 
 export function AdminLayout({ view = 'dashboard' }: { view?: AdminViewType }) {
+  const router = useRouter()
+  const { isAuthenticated, rawUser, isLoading } = useAuth()
   const [collapsed, setCollapsed] = useState(false)
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
+
+  const role = (rawUser?.role || '').toLowerCase()
+  const isAdmin = Boolean(
+    rawUser?.isAdmin ||
+    role === 'admin' ||
+    role === 'operations_manager' ||
+    role === 'finance_admin' ||
+    role === 'producer_manager' ||
+    role === 'vendor_onboarder' ||
+    role === 'content_editor' ||
+    role === 'blog_creator'
+  )
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        router.replace('/auth/login')
+      } else if (!isAdmin) {
+        router.replace('/account')
+      }
+    }
+  }, [isLoading, isAuthenticated, isAdmin, router])
+
+  if (isLoading || !isAuthenticated || !isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+        <div className="flex flex-col items-center gap-3">
+          <div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <p className="text-xs uppercase font-bold tracking-widest text-muted-foreground">Verifying access...</p>
+        </div>
+      </div>
+    )
+  }
 
   const info = viewTitles[view] || viewTitles.dashboard
 

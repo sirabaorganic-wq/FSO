@@ -20,8 +20,9 @@ import {
   X,
   Menu,
 } from 'lucide-react'
-import { mockAdmins } from '@/data/admin/admins'
-import { mockNotifications } from '@/data/admin/notifications'
+import { useAuth } from '@/lib/auth-context'
+import { getAdminNotificationsApi, type AdminNotificationItem } from '@/lib/api/admin'
+import { useEffect } from 'react'
 
 interface TopbarProps {
   title: string
@@ -38,11 +39,39 @@ export function AdminTopbar({
   onToggleSidebar,
   onOpenCommandPalette,
 }: TopbarProps) {
+  const { rawUser, logout } = useAuth()
   const [showNotifications, setShowNotifications] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [showQuickActions, setShowQuickActions] = useState(false)
+  const [notifications, setNotifications] = useState<AdminNotificationItem[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
 
-  const currentAdmin = mockAdmins[0] // Aarav Sharma (Super Admin)
+  useEffect(() => {
+    let isMounted = true
+    getAdminNotificationsApi()
+      .then((items) => {
+        if (!isMounted) return
+        const list = Array.isArray(items) ? items : []
+        setNotifications(list)
+        setUnreadCount(list.filter((n) => !n.read).length)
+      })
+      .catch(() => {
+        if (isMounted) setNotifications([])
+      })
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  const adminName = rawUser?.name || 'Administrator'
+  const adminEmail = rawUser?.email || 'admin@flashsalesonline.com'
+  const adminRole = rawUser?.role ? rawUser.role.replace(/_/g, ' ') : 'Super Admin'
+  const initials = adminName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((n) => n[0].toUpperCase())
+    .join('') || 'AD'
 
   return (
     <header className="sticky top-0 z-20 flex h-16 w-full items-center justify-between border-b border-border/70 bg-surface/90 px-4 md:px-6 backdrop-blur-md">
@@ -141,16 +170,18 @@ export function AdminTopbar({
             aria-label="View notifications"
           >
             <Bell className="size-4" />
-            <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-secondary" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-secondary animate-pulse" />
+            )}
           </button>
 
           {showNotifications && (
             <div className="absolute right-0 mt-2 w-80 md:w-96 rounded-xl border border-border bg-surface shadow-2xl animate-in fade-in zoom-in-95 duration-150 z-30 overflow-hidden">
               <div className="flex items-center justify-between border-b border-border/60 px-4 py-3 bg-surface-muted/30">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-serif text-sm font-bold text-foreground">System Broadcasts</h3>
+                  <h3 className="font-serif text-sm font-bold text-foreground">Notifications & Alerts</h3>
                   <span className="rounded-full bg-secondary/20 px-2 py-0.5 text-[10px] font-bold text-secondary">
-                    {mockNotifications.length} Active
+                    {notifications.length} Total
                   </span>
                 </div>
                 <button
@@ -162,21 +193,27 @@ export function AdminTopbar({
                 </button>
               </div>
               <div className="max-h-72 overflow-y-auto divide-y divide-border/60">
-                {mockNotifications.map((notif) => (
-                  <div key={notif.id} className="p-3 hover:bg-surface-muted/40 transition-colors">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs font-semibold text-foreground leading-snug">{notif.title}</p>
-                      <span className="text-[10px] font-semibold text-muted-foreground shrink-0">
-                        {notif.status}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-[11px] text-muted-foreground line-clamp-2">{notif.message}</p>
-                    <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
-                      <span>Audience: {notif.audience}</span>
-                      <span>{notif.sentTime || notif.scheduledTime}</span>
-                    </div>
+                {notifications.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-muted-foreground">
+                    No active notifications or alerts found in database.
                   </div>
-                ))}
+                ) : (
+                  notifications.map((notif) => (
+                    <div key={notif.id} className="p-3 hover:bg-surface-muted/40 transition-colors">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-xs font-semibold text-foreground leading-snug">{notif.title}</p>
+                        <span className={`text-[10px] font-semibold shrink-0 ${notif.read ? 'text-muted-foreground' : 'text-primary font-bold'}`}>
+                          {notif.read ? 'Read' : 'New'}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[11px] text-muted-foreground line-clamp-2">{notif.message}</p>
+                      <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
+                        <span>Type: {notif.type}</span>
+                        <span>{new Date(notif.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
               <div className="border-t border-border/60 p-2 text-center bg-surface-muted/20">
                 <Link
@@ -202,12 +239,12 @@ export function AdminTopbar({
             }}
             className="flex items-center gap-2.5 rounded-lg border border-border/80 p-1 pr-2.5 hover:bg-surface-muted transition-colors"
           >
-            <div className="relative size-7 rounded-full overflow-hidden border border-border">
-              <Image src={currentAdmin.avatar} alt={currentAdmin.name} fill className="object-cover" />
+            <div className="grid size-7 place-items-center rounded-full bg-primary/10 border border-primary/20 text-[11px] font-bold text-primary">
+              {initials}
             </div>
             <div className="hidden text-left md:block">
-              <p className="text-xs font-semibold text-foreground leading-none">{currentAdmin.name}</p>
-              <p className="text-[10px] text-muted-foreground leading-none mt-0.5">{currentAdmin.role}</p>
+              <p className="text-xs font-semibold text-foreground leading-none">{adminName}</p>
+              <p className="text-[10px] text-muted-foreground capitalize leading-none mt-0.5">{adminRole}</p>
             </div>
             <ChevronDown className="size-3 text-muted-foreground" />
           </button>
@@ -215,10 +252,10 @@ export function AdminTopbar({
           {showProfileMenu && (
             <div className="absolute right-0 mt-2 w-56 rounded-xl border border-border bg-surface p-2 shadow-2xl animate-in fade-in zoom-in-95 duration-150 z-30">
               <div className="border-b border-border/60 px-3 py-2">
-                <p className="text-xs font-bold text-foreground">{currentAdmin.name}</p>
-                <p className="text-[11px] text-muted-foreground">{currentAdmin.email}</p>
+                <p className="text-xs font-bold text-foreground">{adminName}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{adminEmail}</p>
                 <div className="mt-1.5 flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
-                  <Shield className="size-3" /> 2FA Security Enabled
+                  <Shield className="size-3" /> Authoritative Admin Session
                 </div>
               </div>
               <div className="py-1 space-y-0.5">
@@ -240,7 +277,11 @@ export function AdminTopbar({
               <div className="border-t border-border/60 pt-1">
                 <button
                   type="button"
-                  onClick={() => setShowProfileMenu(false)}
+                  onClick={async () => {
+                    setShowProfileMenu(false)
+                    await logout()
+                    window.location.href = '/auth/login'
+                  }}
                   className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
                 >
                   <LogOut className="size-3.5" /> Sign Out Admin

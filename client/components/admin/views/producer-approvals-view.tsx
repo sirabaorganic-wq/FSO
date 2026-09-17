@@ -1,27 +1,99 @@
 'use client'
 
-import { useState } from 'react'
-import { UserCog, CheckCircle, XCircle, FileText, Calendar, ShieldAlert, AlertCircle, Sparkles } from 'lucide-react'
-import { mockProducerApprovals } from '@/data/admin/producers'
-import { ProducerApprovalItem } from '@/types/admin'
+import { useState, useEffect } from 'react'
+import { UserCog, CheckCircle, XCircle, AlertCircle, RefreshCw, Clock } from 'lucide-react'
+import {
+  getAdminApprovalsApi,
+  updateAdminVendorStatusApi,
+  type AdminApprovalsResponse,
+} from '@/lib/api/admin'
+
+type PendingVendorItem = AdminApprovalsResponse['pendingVendors'][number]
 
 export function ProducerApprovalsView() {
-  const [queue, setQueue] = useState<ProducerApprovalItem[]>(mockProducerApprovals)
-  const [selectedItem, setSelectedItem] = useState<ProducerApprovalItem | null>(null)
+  const [pendingVendors, setPendingVendors] = useState<PendingVendorItem[]>([])
+  const [selectedItem, setSelectedItem] = useState<PendingVendorItem | null>(null)
   const [rejectionReason, setRejectionReason] = useState('')
+  const [showRejectModal, setShowRejectModal] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [actionLoading, setActionLoading] = useState(false)
+  const [actionNotice, setActionNotice] = useState<string | null>(null)
 
-  const handleApprove = (id: string) => {
-    setQueue(queue.map((item) => (item.id === id ? { ...item, status: 'Approved' } : item)))
-    if (selectedItem?.id === id) {
-      setSelectedItem(null)
+  const loadApprovals = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await getAdminApprovalsApi()
+      setPendingVendors(data?.pendingVendors || [])
+    } catch (err: unknown) {
+      console.error('Failed to load pending approvals:', err)
+      setError(err instanceof Error ? err.message : 'Failed to fetch approvals queue')
+    } finally {
+      setLoading(false)
     }
   }
 
-  const handleReject = (id: string) => {
-    setQueue(queue.map((item) => (item.id === id ? { ...item, status: 'Rejected' } : item)))
-    if (selectedItem?.id === id) {
-      setSelectedItem(null)
+  useEffect(() => {
+    loadApprovals()
+  }, [])
+
+  const handleApprove = async (id: string) => {
+    try {
+      setActionLoading(true)
+      await updateAdminVendorStatusApi(id, 'APPROVED')
+      setActionNotice('Vendor application approved successfully.')
+      await loadApprovals()
+    } catch (err: unknown) {
+      console.error('Approval failed:', err)
+      setActionNotice(err instanceof Error ? err.message : 'Failed to approve vendor')
+    } finally {
+      setActionLoading(false)
     }
+  }
+
+  const handleReject = async (id: string) => {
+    try {
+      setActionLoading(true)
+      await updateAdminVendorStatusApi(id, 'REJECTED', rejectionReason || 'Application criteria not met')
+      setActionNotice('Vendor application marked as rejected.')
+      setShowRejectModal(null)
+      setRejectionReason('')
+      await loadApprovals()
+    } catch (err: unknown) {
+      console.error('Rejection failed:', err)
+      setActionNotice(err instanceof Error ? err.message : 'Failed to reject vendor')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-4 p-4 animate-pulse">
+        <div className="h-8 w-48 bg-surface-muted rounded" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="h-48 bg-surface-muted rounded-xl" />
+          <div className="h-48 bg-surface-muted rounded-xl" />
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-8 text-center space-y-4">
+        <AlertCircle className="size-10 text-destructive mx-auto" />
+        <p className="text-sm font-semibold text-foreground">{error}</p>
+        <button
+          type="button"
+          onClick={loadApprovals}
+          className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90"
+        >
+          <RefreshCw className="size-3.5" /> Retry
+        </button>
+      </div>
+    )
   }
 
   return (
@@ -33,140 +105,109 @@ export function ProducerApprovalsView() {
         </div>
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-amber-500/20 px-3 py-1 text-xs font-bold text-amber-700 dark:text-amber-300">
-            {queue.filter((q) => q.status !== 'Approved' && q.status !== 'Rejected').length} Applications Pending
+            {pendingVendors.length} Application{pendingVendors.length === 1 ? '' : 's'} Pending
           </span>
         </div>
       </div>
 
-      {/* Cards Queue */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {queue.map((item) => (
-          <div
-            key={item.id}
-            className={`rounded-xl border p-5 transition-all shadow-2xs ${
-              item.status === 'Approved'
-                ? 'border-emerald-500/30 bg-emerald-500/5'
-                : item.status === 'Rejected'
-                ? 'border-rose-500/30 bg-rose-500/5'
-                : 'border-border bg-surface'
-            }`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-secondary">
-                  {item.state} • {item.craftType}
-                </span>
-                <h3 className="font-serif text-lg font-bold text-foreground mt-0.5">{item.businessName}</h3>
-                <p className="text-xs text-muted-foreground">Applicant: {item.applicantName}</p>
-              </div>
-              <span
-                className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
-                  item.status === 'Approved'
-                    ? 'bg-emerald-500 text-white'
-                    : item.status === 'Rejected'
-                    ? 'bg-rose-500 text-white'
-                    : 'bg-amber-500/20 text-amber-700 dark:text-amber-300'
-                }`}
-              >
-                {item.status}
-              </span>
-            </div>
+      {actionNotice && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs font-semibold text-primary flex items-center justify-between">
+          <span>{actionNotice}</span>
+          <button type="button" onClick={() => setActionNotice(null)} className="underline ml-2">
+            Dismiss
+          </button>
+        </div>
+      )}
 
-            <div className="mt-4 grid grid-cols-3 gap-2 text-[11px] border-y border-border/60 py-3 my-3">
-              <div>
-                <span className="text-muted-foreground block">Submitted</span>
-                <span className="font-semibold text-foreground">{item.submittedAt}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block">Documents</span>
-                <span className="font-semibold text-foreground">{item.documentsCount} Files</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block">Risk Grade</span>
-                <span className="font-bold text-emerald-700 dark:text-emerald-400">{item.riskLevel}</span>
-              </div>
-            </div>
-
-            {item.notes && <p className="text-xs text-muted-foreground italic mb-4">&quot;{item.notes}&quot;</p>}
-
-            <div className="flex items-center justify-between pt-1">
-              <button
-                type="button"
-                onClick={() => setSelectedItem(item)}
-                className="text-xs font-bold text-primary hover:underline"
-              >
-                Inspect Documents & Compliance →
-              </button>
-              {item.status !== 'Approved' && item.status !== 'Rejected' && (
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleReject(item.id)}
-                    className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-1 text-xs font-bold text-rose-700 hover:bg-rose-500 hover:text-white transition-colors"
-                  >
-                    Reject
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleApprove(item.id)}
-                    className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-700 transition-colors shadow-xs"
-                  >
-                    Approve
-                  </button>
+      {pendingVendors.length === 0 ? (
+        <div className="rounded-xl border border-border bg-surface p-12 text-center text-xs text-muted-foreground space-y-2">
+          <UserCog className="size-10 mx-auto text-muted-foreground/50 mb-2" />
+          <h3 className="font-serif text-base font-bold text-foreground">Verification Queue Clear</h3>
+          <p>There are currently no producer onboarding applications awaiting administrative review.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {pendingVendors.map((item) => (
+            <div
+              key={item.id}
+              className="rounded-xl border border-amber-500/30 bg-surface p-5 shadow-2xs space-y-3"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-serif text-lg font-bold text-foreground">{item.businessName}</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Contact: {item.contactPerson} ({item.email})
+                  </p>
                 </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+                <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300">
+                  <Clock className="size-3" /> PENDING
+                </span>
+              </div>
 
-      {/* Inspector Modal */}
-      {selectedItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-lg rounded-2xl border border-border bg-surface p-6 shadow-2xl space-y-4">
-            <div className="border-b border-border/60 pb-3">
-              <span className="eyebrow">Document Audit</span>
-              <h3 className="font-serif text-xl font-bold text-foreground">{selectedItem.businessName}</h3>
-              <p className="text-xs text-muted-foreground">Submitted by {selectedItem.applicantName} ({selectedItem.state})</p>
-            </div>
+              <div className="text-[11px] border-y border-border/60 py-2.5 my-2">
+                <span className="text-muted-foreground">Application Date: </span>
+                <span className="font-semibold text-foreground">
+                  {new Date(item.createdAt).toLocaleDateString()}
+                </span>
+              </div>
 
-            <div className="space-y-2 text-xs">
-              <div className="rounded-lg border border-border p-3 bg-surface-muted/30">
-                <p className="font-semibold text-foreground mb-1">Uploaded Certificates & Lab Reports</p>
-                <ul className="space-y-1.5 text-muted-foreground">
-                  <li className="flex items-center justify-between">
-                    <span>1. FSSAI Food Safety Manufacturing License</span>
-                    <span className="font-bold text-emerald-600">✓ Verified</span>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span>2. Heavy Metal & Pesticide Residue Analysis</span>
-                    <span className="font-bold text-emerald-600">✓ Verified</span>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span>3. Bank Account & GST Registration</span>
-                    <span className="font-bold text-emerald-600">✓ Verified</span>
-                  </li>
-                </ul>
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  disabled={actionLoading}
+                  onClick={() => setShowRejectModal(item.id)}
+                  className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-1 text-xs font-bold text-rose-700 hover:bg-rose-500 hover:text-white transition-colors disabled:opacity-50"
+                >
+                  Reject
+                </button>
+                <button
+                  type="button"
+                  disabled={actionLoading}
+                  onClick={() => handleApprove(item.id)}
+                  className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-700 transition-colors shadow-xs disabled:opacity-50"
+                >
+                  Approve Application
+                </button>
               </div>
             </div>
+          ))}
+        </div>
+      )}
 
+      {/* Reject Reason Modal */}
+      {showRejectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md rounded-xl border border-border bg-surface p-6 shadow-2xl space-y-4 text-xs">
+            <h3 className="font-serif text-base font-bold text-foreground">Specify Rejection Reason</h3>
+            <p className="text-muted-foreground">
+              Provide constructive feedback to the applicant regarding why their verification cannot proceed.
+            </p>
+            <textarea
+              rows={3}
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              placeholder="e.g. FSSAI registration document missing or illegible..."
+              className="w-full rounded-lg border border-border bg-background p-2.5 text-xs text-foreground outline-none focus:border-primary"
+            />
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 type="button"
-                onClick={() => setSelectedItem(null)}
+                onClick={() => {
+                  setShowRejectModal(null)
+                  setRejectionReason('')
+                }}
                 className="rounded-lg border border-border px-4 py-2 text-xs font-bold text-muted-foreground hover:bg-surface-muted"
               >
-                Close
+                Cancel
               </button>
-              {selectedItem.status !== 'Approved' && (
-                <button
-                  type="button"
-                  onClick={() => handleApprove(selectedItem.id)}
-                  className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700"
-                >
-                  Approve Producer
-                </button>
-              )}
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={() => handleReject(showRejectModal)}
+                className="rounded-lg bg-rose-600 px-4 py-2 text-xs font-bold text-white hover:bg-rose-700 disabled:opacity-50"
+              >
+                {actionLoading ? 'Rejecting...' : 'Confirm Rejection'}
+              </button>
             </div>
           </div>
         </div>

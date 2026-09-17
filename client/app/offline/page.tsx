@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { WifiOff, RotateCcw } from 'lucide-react'
+import { BackButton } from '@/components/ui/back-button'
 
 export const metadata = { title: 'Offline' }
 
@@ -16,7 +17,8 @@ export default function OfflinePage() {
         <p className="text-xs text-muted-foreground leading-relaxed">
           Please check your internet connection. FLASH SALES ONLINE will automatically reconnect once your network is restored.
         </p>
-        <div className="pt-2 flex justify-center">
+        <div className="pt-2 flex items-center justify-center gap-3">
+          <BackButton fallbackHref="/" label="Go to Marketplace" variant="subtle" />
           <Link
             href="/"
             className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-all shadow-xs"

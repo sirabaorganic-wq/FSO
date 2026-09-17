@@ -2,11 +2,62 @@
 
 import { useState } from 'react'
 import { Home, ArrowUp, ArrowDown, Eye, EyeOff, Edit, Save, CheckCircle2 } from 'lucide-react'
-import { mockCMSHomepageSections } from '@/data/admin/homepage'
 import { CMSHomepageSection } from '@/types/admin'
 
+const DEFAULT_HOMEPAGE_SECTIONS: CMSHomepageSection[] = [
+  {
+    id: 'sec-1',
+    type: 'hero',
+    title: 'India’s Heritage Kitchen Marketplace',
+    subtitle: 'Direct from small-batch artisanal producers, stone mills, and Vedic dairies.',
+    enabled: true,
+    sortOrder: 1,
+    config: {
+      ctaText: 'Explore Everyday Staples',
+      ctaUrl: '/shop',
+      secondaryCtaText: 'Our Producer Philosophy',
+      secondaryCtaUrl: '/producers',
+      badgeText: '100% Traceable Ingredients',
+    },
+  },
+  {
+    id: 'sec-2',
+    type: 'featured_categories',
+    title: 'Shop by Heritage Process',
+    subtitle: 'Every ingredient is categorized by traditional preparation method.',
+    enabled: true,
+    sortOrder: 2,
+    config: {
+      categories: ['vedic-ghee', 'cold-pressed-oils', 'wild-honey', 'himalayan-spices', 'heirloom-grains'],
+    },
+  },
+  {
+    id: 'sec-3',
+    type: 'producer_story',
+    title: 'Meet the Hands Behind the Food',
+    subtitle: 'Discover how Govind Ram Kurmi preserves Sahiwal cow Bilona ghee in Bundelkhand.',
+    enabled: true,
+    sortOrder: 3,
+    config: {
+      producerId: 'prod-301',
+      featuredVideoUrl: '',
+    },
+  },
+  {
+    id: 'sec-4',
+    type: 'recipes_grid',
+    title: 'Recipes from Regional Kitchens',
+    subtitle: 'Authentic heirloom recipes curated with original village techniques.',
+    enabled: true,
+    sortOrder: 4,
+    config: {
+      recipeIds: [],
+    },
+  },
+]
+
 export function HomepageView() {
-  const [sections, setSections] = useState<CMSHomepageSection[]>(mockCMSHomepageSections)
+  const [sections, setSections] = useState<CMSHomepageSection[]>(DEFAULT_HOMEPAGE_SECTIONS)
   const [activeSection, setActiveSection] = useState<CMSHomepageSection | null>(sections[0])
   const [savedNotice, setSavedNotice] = useState(false)
 
@@ -35,11 +86,14 @@ export function HomepageView() {
         <div>
           <span className="eyebrow">Visual Page Builder</span>
           <h2 className="font-serif text-2xl font-bold text-foreground">Homepage CMS Block Editor</h2>
+          <span className="inline-block mt-1 rounded bg-surface-muted border border-border px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+            STATIC CONFIG / CMS DESIGNER
+          </span>
         </div>
         <div className="flex items-center gap-3">
           {savedNotice && (
             <span className="flex items-center gap-1 text-xs font-bold text-emerald-600 animate-in fade-in">
-              <CheckCircle2 className="size-4" /> Layout saved live!
+              <CheckCircle2 className="size-4" /> Layout saved in session!
             </span>
           )}
           <button
@@ -47,7 +101,7 @@ export function HomepageView() {
             onClick={handleSaveConfig}
             className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-all shadow-xs"
           >
-            <Save className="size-4" /> Publish Homepage Layout
+            <Save className="size-4" /> Save Homepage Layout
           </button>
         </div>
       </div>

@@ -7,4 +7,4 @@ export type SellerReview = { id: string; customer: string; product: string; rati
 export type SellerDocument = { id: string; label: string; description: string; status: 'Verified' | 'Pending' | 'Missing'; updated: string }
 export type SellerPayout = { id: string; date: string; amount: number; status: 'Paid' | 'Processing'; reference: string }
 export type SellerNotification = { id: string; title: string; body: string; time: string; unread: boolean }
-export type SellerView = 'overview' | 'products' | 'new-product' | 'product-detail' | 'orders' | 'inventory' | 'customers' | 'reviews' | 'profile' | 'documents' | 'payouts' | 'analytics' | 'settings' | 'support'
+export type SellerView = 'overview' | 'products' | 'new-product' | 'product-detail' | 'orders' | 'order-detail' | 'inventory' | 'customers' | 'reviews' | 'profile' | 'documents' | 'payouts' | 'analytics' | 'settings' | 'support'

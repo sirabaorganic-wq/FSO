@@ -1,21 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight, Sparkles } from 'lucide-react'
 import { mockHeroThemes } from '@/data/heroThemes'
 
 export function RotatingHero() {
-  const [activeThemeIndex, setActiveThemeIndex] = useState(0)
-  const currentTheme = mockHeroThemes[activeThemeIndex]
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setActiveThemeIndex((prevIndex) => (prevIndex + 1) % mockHeroThemes.length)
-    }, 10000)
-    return () => clearInterval(timer)
-  }, [])
+  const currentTheme = mockHeroThemes[0]
 
   return (
     <section
@@ -23,16 +14,15 @@ export function RotatingHero() {
       className="relative w-full min-h-[85vh] lg:min-h-screen flex items-center justify-center overflow-hidden bg-black text-primary-foreground pt-20"
       aria-labelledby="hero-title"
     >
-      {/* Background Image Container - Edge-to-Edge Edge Fill */}
+      {/* Background Image Container - Edge-to-Edge Fill with constant image */}
       <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
         <Image
-          key={currentTheme.id}
-          src={currentTheme.image}
-          alt={currentTheme.title}
+          src="/image.png"
+          alt="Flash Sales Online - Heritage Kitchen Marketplace"
           fill
           priority
           sizes="100vw"
-          className="object-cover object-center w-full h-full scale-105 transition-all duration-1000"
+          className="object-cover object-center w-full h-full scale-105"
         />
         <div className="absolute inset-0 w-full h-full bg-gradient-to-t from-black/95 via-black/60 to-black/40" aria-hidden="true" />
       </div>

@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { mockRecommendations } from '@/data/recommendations'
+import { BackButton } from '@/components/ui/back-button'
 
 export const metadata = { title: 'Personalized Recommendations' }
 
@@ -11,6 +12,9 @@ export default function RecommendationsPage() {
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <SiteHeader />
       <main id="main-content" className="flex-1 container-shell pt-28 pb-16 space-y-6">
+        <div>
+          <BackButton fallbackHref="/" label="Back to Marketplace" variant="pill" />
+        </div>
         <div className="border-b border-border/60 pb-3">
           <span className="eyebrow text-accent">Smart Personalization Engine</span>
           <h1 className="font-serif text-3xl font-bold text-foreground">Recommended Next Reads & Products</h1>

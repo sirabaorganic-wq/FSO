@@ -2,9 +2,13 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Heart, Menu, Search, ShoppingBag, UserRound, X, ShieldCheck, Store } from 'lucide-react'
+import { Heart, Menu, Search, ShoppingBag, UserRound, X, Store } from 'lucide-react'
 import { logoUrl } from '@/data/images'
+import { useCart } from '@/lib/cart-context'
+import { useAuth, getDashboardRouteForUser } from '@/lib/auth-context'
+import { BackButton } from '@/components/ui/back-button'
 
 const links = [
   ['Shop', '/shop'],
@@ -14,10 +18,29 @@ const links = [
 ] as const
 
 export function SiteHeader() {
+  const pathname = usePathname()
+  const showBackButton = Boolean(pathname && pathname !== '/')
+
   const [open, setOpen] = useState(false)
   const [shopOpen, setShopOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [logoFailed, setLogoFailed] = useState(false)
+  const { itemCount } = useCart()
+  const { isAuthenticated, rawUser } = useAuth()
+
+  const role = (rawUser?.role || '').toLowerCase()
+  const isAdmin = Boolean(
+    rawUser?.isAdmin ||
+    role === 'admin' ||
+    role === 'operations_manager' ||
+    role === 'finance_admin' ||
+    role === 'producer_manager' ||
+    role === 'vendor_onboarder' ||
+    role === 'content_editor' ||
+    role === 'blog_creator'
+  )
+  const isSeller = role === 'vendor' || role === 'seller'
+  const dashboardHref = isAuthenticated ? getDashboardRouteForUser(rawUser) : '/auth/login'
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24)
@@ -29,7 +52,7 @@ export function SiteHeader() {
   return (
     <header
       className={`fixed inset-x-0 top-0 z-20 transition-all duration-300 ${
-        scrolled || open || shopOpen
+        scrolled || open || shopOpen || pathname !== '/'
           ? 'bg-background/95 text-foreground shadow-md backdrop-blur-md border-b border-border/60'
           : 'bg-gradient-to-b from-black/40 via-black/10 to-transparent text-primary-foreground'
       }`}
@@ -41,34 +64,44 @@ export function SiteHeader() {
         Skip to content
       </a>
       <div className="container-shell flex min-h-20 items-center justify-between py-3">
-        {/* Brand Logo & Title */}
-        <Link href="/" aria-label="Flash Sales Online home" className="flex items-center gap-3 group">
-          <span className="relative block h-11 w-11 rounded-lg overflow-hidden border border-current/30 bg-background p-0.5 shadow-sm shrink-0 transition-transform group-hover:scale-105">
-            {logoFailed ? (
-              <span className="grid h-full place-items-center px-1 text-center font-serif text-[10px] font-bold leading-none text-primary">
-                FSO
+        {/* Brand Logo & Title with optional Back Navigation */}
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          {showBackButton && (
+            <BackButton
+              fallbackHref="/"
+              label="Back"
+              variant="pill"
+              className="py-1 px-2.5 text-[10px] sm:text-xs"
+            />
+          )}
+          <Link href="/" aria-label="Flash Sales Online home" className="flex items-center gap-3 group">
+            <span className="relative block h-11 w-11 rounded-lg overflow-hidden border border-current/30 bg-background p-0.5 shadow-sm shrink-0 transition-transform group-hover:scale-105">
+              {logoFailed ? (
+                <span className="grid h-full place-items-center px-1 text-center font-serif text-[10px] font-bold leading-none text-primary">
+                  FSO
+                </span>
+              ) : (
+                <Image
+                  src={logoUrl}
+                  alt="Flash Sales Online Brand Logo"
+                  fill
+                  sizes="44px"
+                  className="object-cover"
+                  priority
+                  onError={() => setLogoFailed(true)}
+                />
+              )}
+            </span>
+            <div className="flex flex-col">
+              <span className="font-serif text-lg font-bold leading-tight tracking-tight">
+                FLASH SALES ONLINE
               </span>
-            ) : (
-              <Image
-                src={logoUrl}
-                alt="Flash Sales Online Brand Logo"
-                fill
-                sizes="44px"
-                className="object-cover"
-                priority
-                onError={() => setLogoFailed(true)}
-              />
-            )}
-          </span>
-          <div className="flex flex-col">
-            <span className="font-serif text-lg font-bold leading-tight tracking-tight">
-              FLASH SALES ONLINE
-            </span>
-            <span className="text-[9px] font-bold tracking-widest uppercase opacity-80">
-              Heritage Marketplace
-            </span>
-          </div>
-        </Link>
+              <span className="text-[9px] font-bold tracking-widest uppercase opacity-80">
+                Heritage Marketplace
+              </span>
+            </div>
+          </Link>
+        </div>
 
         {/* Desktop Primary Navigation */}
         <nav className="hidden items-center gap-7 lg:flex" aria-label="Primary navigation">
@@ -94,18 +127,30 @@ export function SiteHeader() {
 
         {/* Actions & Portals */}
         <div className="hidden items-center gap-1.5 lg:flex">
-          <Link
-            href="/seller"
-            className="flex items-center gap-1.5 rounded-lg border border-current/30 px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider hover:bg-current/10 transition-colors mr-1"
-          >
-            <Store className="size-3.5" /> Seller
-          </Link>
-          <Link
-            href="/admin"
-            className="flex items-center gap-1.5 rounded-lg bg-accent/90 text-accent-foreground px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider hover:bg-accent transition-colors shadow-2xs mr-2"
-          >
-            <ShieldCheck className="size-3.5" /> Admin
-          </Link>
+          {!isSeller && (
+            <Link
+              href="/seller/register"
+              className="hidden xl:inline-flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent/10 px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-accent hover:bg-accent hover:text-accent-foreground transition-colors mr-1"
+            >
+              <Store className="size-3.5" /> Sell on FSO
+            </Link>
+          )}
+          {isAuthenticated && isAdmin && (
+            <Link
+              href="/admin"
+              className="flex items-center gap-1.5 rounded-lg bg-accent/90 text-accent-foreground px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider hover:bg-accent transition-colors shadow-2xs mr-1"
+            >
+              Admin Portal
+            </Link>
+          )}
+          {isAuthenticated && isSeller && (
+            <Link
+              href="/seller"
+              className="flex items-center gap-1.5 rounded-lg border border-current/30 px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider hover:bg-current/10 transition-colors mr-1"
+            >
+              <Store className="size-3.5" /> Seller
+            </Link>
+          )}
 
           <Link href="/search" aria-label="Search items" className="grid size-9 place-items-center hover:text-accent transition-colors rounded-lg">
             <Search className="size-4" aria-hidden="true" />
@@ -113,11 +158,19 @@ export function SiteHeader() {
           <Link href="/account/wishlist" aria-label="Wishlist" className="grid size-9 place-items-center hover:text-accent transition-colors rounded-lg">
             <Heart className="size-4" aria-hidden="true" />
           </Link>
-          <Link href="/account" aria-label="Account" className="grid size-9 place-items-center hover:text-accent transition-colors rounded-lg">
+          <Link href={dashboardHref} aria-label={isAuthenticated ? "Dashboard" : "Sign in"} className="relative grid size-9 place-items-center hover:text-accent transition-colors rounded-lg">
             <UserRound className="size-4" aria-hidden="true" />
+            {isAuthenticated && (
+              <span className="absolute bottom-1.5 right-1.5 size-1.5 rounded-full bg-accent" />
+            )}
           </Link>
-          <Link href="/cart" aria-label="Shopping Cart" className="grid size-9 place-items-center hover:text-accent transition-colors rounded-lg">
+          <Link href="/cart" aria-label={`Shopping Cart (${itemCount} items)`} className="relative grid size-9 place-items-center hover:text-accent transition-colors rounded-lg">
             <ShoppingBag className="size-4" aria-hidden="true" />
+            {itemCount > 0 && (
+              <span className="absolute -top-1 -right-1 grid min-w-4 h-4 place-items-center rounded-full bg-accent text-[9px] font-bold text-accent-foreground px-1 leading-none shadow-xs">
+                {itemCount > 99 ? '99+' : itemCount}
+              </span>
+            )}
           </Link>
         </div>
 
@@ -183,21 +236,44 @@ export function SiteHeader() {
                 {label}
               </Link>
             ))}
-            <div className="grid grid-cols-2 gap-3 pt-3">
-              <Link
-                href="/admin"
-                onClick={() => setOpen(false)}
-                className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 text-xs font-bold uppercase tracking-wider"
-              >
-                <ShieldCheck className="size-4" /> Admin Portal
-              </Link>
-              <Link
-                href="/seller"
-                onClick={() => setOpen(false)}
-                className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border px-4 text-xs font-bold uppercase tracking-wider"
-              >
-                <Store className="size-4" /> Seller Portal
-              </Link>
+            <div className="pt-3">
+              {!isSeller && (
+                <div className="mb-3">
+                  <Link
+                    href="/seller/register"
+                    onClick={() => setOpen(false)}
+                    className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-accent/40 bg-accent/10 px-4 text-xs font-bold uppercase tracking-wider text-accent hover:bg-accent hover:text-accent-foreground transition-colors"
+                  >
+                    <Store className="size-4" /> Become a Seller / Producer
+                  </Link>
+                </div>
+              )}
+              {isAuthenticated ? (
+                <Link
+                  href={dashboardHref}
+                  onClick={() => setOpen(false)}
+                  className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 text-xs font-bold uppercase tracking-wider"
+                >
+                  <UserRound className="size-4" /> Go to {isAdmin ? 'Admin Portal' : isSeller ? 'Seller Portal' : 'My Account'}
+                </Link>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <Link
+                    href="/auth/login"
+                    onClick={() => setOpen(false)}
+                    className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 text-xs font-bold uppercase tracking-wider"
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    href="/auth/register"
+                    onClick={() => setOpen(false)}
+                    className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border px-4 text-xs font-bold uppercase tracking-wider"
+                  >
+                    Register
+                  </Link>
+                </div>
+              )}
             </div>
           </nav>
         </div>

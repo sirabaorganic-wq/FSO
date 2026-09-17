@@ -1,85 +1,112 @@
 'use client'
 
-import { useState } from 'react'
-import Image from 'next/image'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { UserCheck, Star, MapPin, CheckCircle2, AlertCircle, FileText, ShoppingBag } from 'lucide-react'
-import { mockProducers } from '@/data/admin/producers'
+import { UserCheck, CheckCircle2, AlertCircle, RefreshCw, XCircle, Clock } from 'lucide-react'
 import { DataTable } from '../data-table'
-import { Producer } from '@/types/admin'
+import {
+  getAdminVendorsApi,
+  getAdminApprovalsApi,
+  type AdminVendorItem,
+} from '@/lib/api/admin'
 
 export function ProducersView() {
-  const [selectedProd, setSelectedProd] = useState<Producer | null>(null)
+  const [vendors, setVendors] = useState<AdminVendorItem[]>([])
+  const [pendingCount, setPendingCount] = useState<number>(0)
+  const [selectedProd, setSelectedProd] = useState<AdminVendorItem | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const loadVendors = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const [vendorsRes, approvalsRes] = await Promise.all([
+        getAdminVendorsApi(),
+        getAdminApprovalsApi().catch(() => ({ totalPending: 0, pendingVendors: [], pendingProducts: [] })),
+      ])
+      setVendors(vendorsRes?.vendors || [])
+      setPendingCount(approvalsRes?.totalPending || 0)
+    } catch (err: unknown) {
+      console.error('Failed to load vendors:', err)
+      setError(err instanceof Error ? err.message : 'Failed to fetch vendor directory')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadVendors()
+  }, [])
 
   const columns = [
     {
       key: 'producer',
       header: 'Producer & Business',
-      accessor: (p: Producer) => (
-        <div className="flex items-center gap-3">
-          <div className="relative size-10 rounded-lg overflow-hidden border border-border shrink-0">
-            <Image src={p.avatar} alt={p.name} fill className="object-cover" />
-          </div>
-          <div>
-            <p className="font-semibold text-foreground">{p.businessName}</p>
-            <p className="text-[10px] text-muted-foreground">Master Artisan: {p.name}</p>
-          </div>
+      accessor: (p: AdminVendorItem) => (
+        <div>
+          <p className="font-semibold text-foreground">{p.businessName}</p>
+          <p className="text-[10px] text-muted-foreground">
+            Contact: {p.contactPerson} ({p.email})
+          </p>
         </div>
       ),
       sortable: true,
     },
     {
-      key: 'location',
-      header: 'Region & Category',
-      accessor: (p: Producer) => (
-        <div>
-          <span className="text-xs font-semibold text-foreground">{p.category}</span>
-          <p className="text-[10px] text-muted-foreground">{p.city}, {p.state}</p>
-        </div>
+      key: 'businessType',
+      header: 'Business Model',
+      accessor: (p: AdminVendorItem) => (
+        <span className="rounded-full bg-surface-muted px-2 py-0.5 text-[10px] font-semibold text-foreground uppercase">
+          {p.businessType || 'Direct Producer'}
+        </span>
       ),
-    },
-    {
-      key: 'metrics',
-      header: 'Performance',
-      accessor: (p: Producer) => (
-        <div>
-          <span className="font-serif font-bold text-emerald-700 dark:text-emerald-400">
-            ₹{p.totalSales.toLocaleString('en-IN')}
-          </span>
-          <p className="text-[10px] text-muted-foreground">{p.productsCount} Products Listed</p>
-        </div>
-      ),
-    },
-    {
-      key: 'rating',
-      header: 'Rating',
-      accessor: (p: Producer) => (
-        <div className="flex items-center gap-1 font-bold text-amber-600 text-xs">
-          <Star className="size-3.5 fill-amber-500 text-amber-500" />
-          <span>{p.rating}</span>
-        </div>
-      ),
+      sortable: true,
     },
     {
       key: 'verification',
-      header: 'Status',
-      accessor: (p: Producer) => (
-        <span
-          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-            p.verificationStatus === 'Verified'
-              ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-              : 'bg-amber-500/10 text-amber-700'
-          }`}
-        >
-          <CheckCircle2 className="size-3" />
-          {p.verificationStatus}
+      header: 'Approval Status',
+      accessor: (p: AdminVendorItem) => {
+        const st = (p.status || '').toUpperCase()
+        const isApproved = st === 'APPROVED'
+        const isPending = st === 'PENDING'
+        return (
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+              isApproved
+                ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                : isPending
+                ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                : 'bg-rose-500/10 text-rose-700'
+            }`}
+          >
+            {isApproved ? (
+              <CheckCircle2 className="size-3" />
+            ) : isPending ? (
+              <Clock className="size-3" />
+            ) : (
+              <XCircle className="size-3" />
+            )}
+            {st}
+          </span>
+        )
+      },
+      sortable: true,
+    },
+    {
+      key: 'createdAt',
+      header: 'Onboarded Date',
+      accessor: (p: AdminVendorItem) => (
+        <span className="text-xs text-muted-foreground">
+          {p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'N/A'}
         </span>
       ),
+      sortable: true,
     },
     {
       key: 'actions',
       header: 'Actions',
-      accessor: (p: Producer) => (
+      accessor: (p: AdminVendorItem) => (
         <button
           type="button"
           onClick={() => setSelectedProd(p)}
@@ -90,6 +117,31 @@ export function ProducersView() {
       ),
     },
   ]
+
+  if (loading) {
+    return (
+      <div className="space-y-4 p-4 animate-pulse">
+        <div className="h-8 w-48 bg-surface-muted rounded" />
+        <div className="h-64 bg-surface-muted rounded-xl" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-8 text-center space-y-4">
+        <AlertCircle className="size-10 text-destructive mx-auto" />
+        <p className="text-sm font-semibold text-foreground">{error}</p>
+        <button
+          type="button"
+          onClick={loadVendors}
+          className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90"
+        >
+          <RefreshCw className="size-3.5" /> Retry
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -102,70 +154,72 @@ export function ProducersView() {
           href="/admin/producer-approvals"
           className="flex items-center gap-2 rounded-xl bg-secondary px-4 py-2 text-xs font-bold text-secondary-foreground hover:bg-secondary/90 transition-all shadow-xs"
         >
-          <span>View Pending Approvals (2)</span>
+          <span>View Pending Approvals ({pendingCount})</span>
         </Link>
       </div>
 
-      <DataTable
-        data={mockProducers}
-        columns={columns}
-        searchPlaceholder="Search producer name, business or state..."
-        searchKey={(p) => `${p.name} ${p.businessName} ${p.state} ${p.category}`}
-        keyExtractor={(p) => p.id}
-      />
+      {vendors.length === 0 ? (
+        <div className="rounded-xl border border-border bg-surface p-12 text-center text-xs text-muted-foreground space-y-2">
+          <UserCheck className="size-10 mx-auto text-muted-foreground/50 mb-2" />
+          <h3 className="font-serif text-base font-bold text-foreground">No Producers Found</h3>
+          <p>No verified producer records exist in the database.</p>
+        </div>
+      ) : (
+        <DataTable
+          data={vendors}
+          columns={columns}
+          searchPlaceholder="Search producer name, business or email..."
+          searchKey={(v) => `${v.businessName} ${v.email}`}
+          keyExtractor={(v) => v.id}
+        />
+      )}
 
       {/* Producer Profile Details Modal */}
       {selectedProd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-xl rounded-2xl border border-border bg-surface p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center gap-4 border-b border-border/60 pb-4">
-              <div className="relative size-14 rounded-lg overflow-hidden border border-border shrink-0">
-                <Image src={selectedProd.avatar} alt={selectedProd.name} fill className="object-cover" />
-              </div>
+          <div className="w-full max-w-xl rounded-2xl border border-border bg-surface p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto text-xs">
+            <div className="flex items-center justify-between border-b border-border/60 pb-3">
               <div>
-                <h3 className="font-serif text-xl font-bold text-foreground">{selectedProd.businessName}</h3>
-                <p className="text-xs text-muted-foreground">Founder: {selectedProd.name} • {selectedProd.city}, {selectedProd.state}</p>
-                <div className="mt-1 flex items-center gap-2">
-                  <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
-                    {selectedProd.verificationStatus}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground">{selectedProd.email}</span>
-                </div>
+                <h3 className="font-serif text-lg font-bold text-foreground">{selectedProd.businessName}</h3>
+                <p className="text-muted-foreground">{selectedProd.email}</p>
               </div>
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground mb-1">Craft Story</p>
-              <p className="text-xs italic text-foreground leading-relaxed bg-surface-muted/30 p-3 rounded-lg border border-border/60">
-                &quot;{selectedProd.storyExcerpt}&quot;
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground mb-2">Compliance Documents ({selectedProd.documents.length})</p>
-              <div className="space-y-1.5">
-                {selectedProd.documents.map((doc, idx) => (
-                  <div key={idx} className="flex items-center justify-between rounded-lg border border-border p-2.5 text-xs bg-background/60">
-                    <div className="flex items-center gap-2">
-                      <FileText className="size-4 text-primary" />
-                      <span className="font-medium text-foreground">{doc.title}</span>
-                    </div>
-                    <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
-                      {doc.status}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end pt-2">
               <button
                 type="button"
                 onClick={() => setSelectedProd(null)}
-                className="rounded-lg border border-border px-4 py-2 text-xs font-bold text-foreground hover:bg-surface-muted"
+                className="text-xs font-bold text-muted-foreground hover:text-foreground"
               >
-                Close Inspector
+                Close
               </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border border-border/60 bg-surface-muted/30 p-3">
+                <span className="text-muted-foreground block text-[10px] uppercase font-bold">Contact Person</span>
+                <span className="font-semibold text-foreground">{selectedProd.contactPerson || 'N/A'}</span>
+              </div>
+              <div className="rounded-lg border border-border/60 bg-surface-muted/30 p-3">
+                <span className="text-muted-foreground block text-[10px] uppercase font-bold">Contact Phone</span>
+                <span className="font-semibold text-foreground">{selectedProd.phone || 'N/A'}</span>
+              </div>
+              <div className="rounded-lg border border-border/60 bg-surface-muted/30 p-3">
+                <span className="text-muted-foreground block text-[10px] uppercase font-bold">Approval Status</span>
+                <span className="font-semibold text-foreground uppercase">{selectedProd.status}</span>
+              </div>
+              <div className="rounded-lg border border-border/60 bg-surface-muted/30 p-3">
+                <span className="text-muted-foreground block text-[10px] uppercase font-bold">Account Active</span>
+                <span className="font-semibold text-foreground">{selectedProd.isActive ? 'Active' : 'Disabled'}</span>
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-2 border-t border-border/60">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Vendor ID</span>
+                <span className="font-mono text-[11px] text-foreground">{selectedProd.id}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Registration Date</span>
+                <span className="text-foreground">{new Date(selectedProd.createdAt).toLocaleDateString()}</span>
+              </div>
             </div>
           </div>
         </div>

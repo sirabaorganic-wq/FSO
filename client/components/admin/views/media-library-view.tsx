@@ -2,16 +2,16 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { Image as ImageIcon, Upload, Grid, List, Folder, Tag, Info, Trash2, X } from 'lucide-react'
-import { mockMediaItems } from '@/data/admin/homepage'
+import { Image as ImageIcon, Upload, Grid, List, Folder, Tag, Info, Trash2, X, Plus } from 'lucide-react'
 import { MediaItem } from '@/types/admin'
 
 export function MediaLibraryView() {
-  const [mediaList, setMediaList] = useState<MediaItem[]>(mockMediaItems)
+  const [mediaList, setMediaList] = useState<MediaItem[]>([])
   const [selectedFolder, setSelectedFolder] = useState<string>('All')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null)
   const [showUploadModal, setShowUploadModal] = useState(false)
+  const [uploadNotice, setUploadNotice] = useState<string | null>(null)
 
   const folders = ['All', 'Products', 'Producers', 'Articles', 'Banners', 'System']
 
@@ -19,12 +19,24 @@ export function MediaLibraryView() {
     ? mediaList
     : mediaList.filter((m) => m.folder === selectedFolder)
 
+  const handleSimulateUpload = (e: React.FormEvent) => {
+    e.preventDefault()
+    setUploadNotice('Asset upload pipeline: In production, images upload directly to S3 / Cloudinary CDN.')
+    setTimeout(() => {
+      setShowUploadModal(false)
+      setUploadNotice(null)
+    }, 2000)
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <span className="eyebrow">Asset Management</span>
-          <h2 className="font-serif text-2xl font-bold text-foreground">Media Library</h2>
+          <h2 className="font-serif text-2xl font-bold text-foreground">Media Library & CDN</h2>
+          <span className="inline-block mt-1 rounded bg-surface-muted border border-border px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+            STATIC CONFIG / ASSET CDN
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -39,29 +51,29 @@ export function MediaLibraryView() {
 
       {/* Folders & Controls */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
-        <div className="flex items-center gap-2 overflow-x-auto">
+        <div className="flex flex-wrap gap-1.5">
           {folders.map((f) => (
             <button
               key={f}
               type="button"
               onClick={() => setSelectedFolder(f)}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
                 selectedFolder === f
-                  ? 'bg-primary text-primary-foreground shadow-2xs'
-                  : 'bg-surface border border-border text-foreground hover:bg-surface-muted'
+                  ? 'bg-primary text-primary-foreground shadow-xs'
+                  : 'bg-surface border border-border text-muted-foreground hover:text-foreground'
               }`}
             >
-              <Folder className="size-3.5" />
-              <span>{f}</span>
+              {f}
             </button>
           ))}
         </div>
 
-        <div className="flex items-center gap-1 border border-border rounded-lg p-0.5 bg-surface">
+        <div className="flex items-center gap-1 bg-surface border border-border p-1 rounded-lg">
           <button
             type="button"
             onClick={() => setViewMode('grid')}
             className={`p-1.5 rounded ${viewMode === 'grid' ? 'bg-surface-muted text-foreground' : 'text-muted-foreground'}`}
+            aria-label="Grid view"
           >
             <Grid className="size-4" />
           </button>
@@ -69,14 +81,23 @@ export function MediaLibraryView() {
             type="button"
             onClick={() => setViewMode('list')}
             className={`p-1.5 rounded ${viewMode === 'list' ? 'bg-surface-muted text-foreground' : 'text-muted-foreground'}`}
+            aria-label="List view"
           >
             <List className="size-4" />
           </button>
         </div>
       </div>
 
-      {/* Grid or List */}
-      {viewMode === 'grid' ? (
+      {/* Empty State vs List */}
+      {filteredMedia.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border/80 p-12 text-center text-xs text-muted-foreground bg-surface">
+          <ImageIcon className="size-10 mx-auto mb-3 opacity-40 text-primary" />
+          <h3 className="font-serif text-base font-bold text-foreground">No Media Assets in &quot;{selectedFolder}&quot;</h3>
+          <p className="mt-1 max-w-md mx-auto">
+            The media CDN catalog currently contains no uploaded assets in this folder. Click &apos;Upload Assets&apos; to stage photography or certificates.
+          </p>
+        </div>
+      ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {filteredMedia.map((item) => (
             <div
@@ -125,61 +146,45 @@ export function MediaLibraryView() {
         </div>
       )}
 
-      {/* Media Details Drawer */}
-      {selectedMedia && (
-        <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/40 backdrop-blur-xs">
-          <div className="h-full w-full max-w-md bg-surface p-6 shadow-2xl space-y-4 overflow-y-auto animate-in slide-in-from-right duration-200">
-            <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <h3 className="font-serif text-xl font-bold text-foreground">Media Inspector</h3>
-              <button type="button" onClick={() => setSelectedMedia(null)} className="text-muted-foreground hover:text-foreground">
-                <X className="size-5" />
-              </button>
-            </div>
-            <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-border">
-              <Image src={selectedMedia.url} alt={selectedMedia.altText} fill className="object-cover" />
-            </div>
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="block font-semibold mb-1">Filename</label>
-                <input type="text" value={selectedMedia.name} readOnly className="w-full rounded border border-border p-2 bg-surface-muted/30" />
-              </div>
-              <div>
-                <label className="block font-semibold mb-1">Alt Text (Accessibility & SEO)</label>
-                <textarea rows={2} defaultValue={selectedMedia.altText} className="w-full rounded border border-border p-2 outline-none focus:border-ring" />
-              </div>
-              <div>
-                <label className="block font-semibold mb-1">Tags</label>
-                <div className="flex flex-wrap gap-1">
-                  {selectedMedia.tags.map((t) => (
-                    <span key={t} className="rounded bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-                      #{t}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Upload Modal Simulation */}
+      {/* Upload Modal */}
       {showUploadModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
           <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-2xl space-y-4">
-            <h3 className="font-serif text-xl font-bold text-foreground">Upload Media Files</h3>
-            <div className="border-2 border-dashed border-border rounded-xl p-8 text-center space-y-2 bg-surface-muted/20">
-              <Upload className="size-8 text-muted-foreground mx-auto" />
-              <p className="text-xs font-bold text-foreground">Drag & drop files here or click to browse</p>
-              <p className="text-[10px] text-muted-foreground">Supports JPG, PNG, WEBP, MP4 (Max 25MB)</p>
-            </div>
-            <div className="flex items-center justify-end gap-2">
-              <button type="button" onClick={() => setShowUploadModal(false)} className="rounded-lg border border-border px-4 py-2 text-xs font-bold text-muted-foreground hover:bg-surface-muted">
-                Cancel
-              </button>
-              <button type="button" onClick={() => setShowUploadModal(false)} className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90">
-                Start Uploading
+            <div className="flex items-center justify-between border-b border-border/60 pb-2">
+              <h3 className="font-serif text-lg font-bold text-foreground">Upload Media Assets</h3>
+              <button type="button" onClick={() => setShowUploadModal(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="size-4" />
               </button>
             </div>
+            <form onSubmit={handleSimulateUpload} className="space-y-4 text-xs">
+              <div className="rounded-xl border-2 border-dashed border-border p-6 text-center space-y-2 bg-surface-muted/30">
+                <Upload className="size-8 mx-auto text-primary opacity-60" />
+                <p className="font-semibold text-foreground">Drag and drop images or documents</p>
+                <p className="text-[10px] text-muted-foreground">Supported formats: JPEG, PNG, WebP, SVG, PDF up to 10MB</p>
+              </div>
+
+              {uploadNotice && (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-[11px] text-amber-700 dark:text-amber-300">
+                  {uploadNotice}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowUploadModal(false)}
+                  className="rounded-lg border border-border px-4 py-2 font-semibold hover:bg-surface-muted"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-primary px-4 py-2 font-bold text-primary-foreground hover:bg-primary/90"
+                >
+                  Upload
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
